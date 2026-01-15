@@ -19,16 +19,51 @@ export default function AdminView() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
+  // Try to get password from env
+  const envPassword = import.meta.env.VITE_ADMIN_PASSWORD;
+
+  // If no password is set in env, block access and show setup instructions
+  if (!envPassword) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-md border-amber-500/50 bg-amber-950/10">
+          <CardHeader>
+            <CardTitle className="text-amber-500">กรุณาตั้งค่ารหัสผ่าน (Setup Required)</CardTitle>
+            <CardDescription className="text-amber-200/80">
+              Admin Password is not configured.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-muted-foreground">
+            <p className="text-foreground font-medium">เพื่อให้หน้าแอดมินใช้งานได้และปลอดภัย กรุณาทำตามขั้นตอน:</p>
+            <ol className="list-decimal list-inside space-y-2 ml-1">
+              <li>ไปที่ <strong>Tools &gt; Secrets</strong> ใน Replit Editor</li>
+              <li>เพิ่ม Key: <code className="bg-secondary px-1 py-0.5 rounded text-primary">VITE_ADMIN_PASSWORD</code></li>
+              <li>Value: <strong>รหัสผ่านที่คุณต้องการ</strong></li>
+              <li>จากนั้นกดปุ่ม <strong>Stop</strong> และ <strong>Run</strong> ใหม่เพื่อเริ่มใช้งาน</li>
+            </ol>
+            <div className="mt-4 p-3 bg-secondary/50 rounded text-xs">
+              <span className="font-bold text-primary">Note:</span> เนื่องจากข้อจำกัดด้านความปลอดภัยของ Mockup Environment จำเป็นต้องใช้ชื่อตัวแปรที่มีคำนำหน้าว่า VITE_
+            </div>
+            <div className="text-center pt-4">
+              <Link href="/">
+                <Button variant="outline" className="w-full">Back to Home</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Simple auth check
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Default password is 'admin' for demo purposes
-    if (password === "admin") {
+    if (password === envPassword) {
       setIsAuthenticated(true);
     } else {
       toast({
-        title: "Invalid Password",
-        description: "Try 'admin' for this demo.",
+        title: "รหัสผ่านไม่ถูกต้อง",
+        description: "Invalid Password",
         variant: "destructive"
       });
     }
@@ -51,6 +86,11 @@ export default function AdminView() {
                 onChange={(e) => setPassword(e.target.value)} 
               />
               <Button type="submit" className="w-full">Login</Button>
+              <div className="mt-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                 <p className="text-xs text-destructive text-center font-medium">
+                   “อย่าใช้รหัสผ่านบัญชีส่วนตัวของคุณ—ตั้งรหัสผ่านเฉพาะสำหรับหน้าแอดมินเท่านั้น”
+                 </p>
+              </div>
               <div className="text-center">
                 <Link href="/">
                   <Button variant="link" className="text-muted-foreground">Back to Site</Button>
