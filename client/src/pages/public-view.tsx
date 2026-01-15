@@ -33,6 +33,16 @@ export default function PublicView() {
           heroUrl={config.profile.heroUrl}
         />
 
+        {/* Campaign Header (Optional) */}
+        {config.campaign?.name && (
+           <div className="px-6 text-center mb-6">
+              <h2 className="text-xl font-bold text-primary tracking-tight">{config.campaign.name}</h2>
+              {config.campaign.shareInstruction && (
+                  <p className="text-sm text-muted-foreground mt-1">{config.campaign.shareInstruction}</p>
+              )}
+           </div>
+        )}
+
         {/* Instructions */}
         <InstructionBlock instructions={config.instructions} />
 
@@ -63,12 +73,12 @@ export default function PublicView() {
             </section>
           )}
 
-          {/* Social Links */}
-          {config.socials.length > 0 && (
+          {/* Activity Posts */}
+          {config.posts.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold pl-1 text-primary">Join the Community</h2>
+              <h2 className="text-lg font-semibold pl-1 text-primary">Activities & Sharing</h2>
               <div className="space-y-3">
-                {config.socials.map((item, index) => (
+                {config.posts.map((item, index) => (
                   <SocialCard key={item.id} item={item} index={index} />
                 ))}
               </div>

@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Trash2, Plus, Save, ArrowLeft, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { FileUploader } from "@/components/ui/file-upload";
 
 export default function AdminView() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -19,10 +20,8 @@ export default function AdminView() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  // Try to get password from env
   const envPassword = import.meta.env.VITE_ADMIN_PASSWORD;
 
-  // If no password is set in env, block access and show setup instructions
   if (!envPassword) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
@@ -55,7 +54,6 @@ export default function AdminView() {
     );
   }
 
-  // Simple auth check
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === envPassword) {
@@ -122,14 +120,14 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
     name: "discounts",
   });
 
-  const { fields: socialFields, append: appendSocial, remove: removeSocial } = useFieldArray({
+  const { fields: postFields, append: appendPost, remove: removePost } = useFieldArray({
     control: form.control,
-    name: "socials",
+    name: "posts",
   });
   
   const { fields: instructionFields, append: appendInstruction, remove: removeInstruction } = useFieldArray({
       control: form.control,
-      name: "instructions" as any, // casting due to simple array limitation in react-hook-form types sometimes
+      name: "instructions" as any, 
   });
 
   const onSubmit = (data: AppConfig) => {
@@ -162,54 +160,40 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
       <div className="container max-w-4xl mx-auto p-4 mt-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <Tabs defaultValue="profile" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 mb-8">
+            <Tabs defaultValue="campaign" className="w-full">
+              <TabsList className="grid w-full grid-cols-5 mb-8">
+                <TabsTrigger value="campaign">Campaign</TabsTrigger>
                 <TabsTrigger value="profile">Profile</TabsTrigger>
                 <TabsTrigger value="discounts">Discounts</TabsTrigger>
                 <TabsTrigger value="downloads">Files</TabsTrigger>
-                <TabsTrigger value="socials">Socials</TabsTrigger>
+                <TabsTrigger value="posts">Posts</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="profile" className="space-y-6">
-                <Card>
-                  <CardHeader><CardTitle>Profile Details</CardTitle></CardHeader>
+              <TabsContent value="campaign" className="space-y-6">
+                 <Card>
+                  <CardHeader><CardTitle>Campaign Info</CardTitle><CardDescription>Overall details for this promo page</CardDescription></CardHeader>
                   <CardContent className="space-y-4">
-                    <FormField
+                     <FormField
                       control={form.control}
-                      name="profile.title"
+                      name="campaign.name"
                       render={({ field }) => (
-                        <FormItem><FormLabel>Page Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="profile.subtitle"
-                      render={({ field }) => (
-                        <FormItem><FormLabel>Subtitle</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="profile.avatarUrl"
-                      render={({ field }) => (
-                        <FormItem><FormLabel>Avatar URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Campaign Name (Thai/English)</FormLabel><FormControl><Input {...field} placeholder="ชื่อแคมเปญ" /></FormControl><FormMessage /></FormItem>
                       )}
                     />
                      <FormField
                       control={form.control}
-                      name="profile.heroUrl"
+                      name="campaign.shareInstruction"
                       render={({ field }) => (
-                        <FormItem><FormLabel>Hero Background URL (Optional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Share Instruction</FormLabel><FormControl><Input {...field} placeholder="ทำตามขั้นตอนง่ายๆ เพื่อรับสิทธิพิเศษ" /></FormControl><FormMessage /></FormItem>
                       )}
                     />
                   </CardContent>
                 </Card>
 
-                <Card>
-                    <CardHeader><CardTitle>Instructions</CardTitle><CardDescription>Steps for your audience to follow</CardDescription></CardHeader>
+                 <Card>
+                    <CardHeader><CardTitle>Instructions</CardTitle><CardDescription>Detailed steps list</CardDescription></CardHeader>
                     <CardContent className="space-y-4">
                          <div className="space-y-2">
-                            {/* Simple array editing for instructions */}
                             {form.watch("instructions").map((_, index) => (
                                 <div key={index} className="flex gap-2">
                                     <FormField
@@ -234,6 +218,62 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
                 </Card>
               </TabsContent>
 
+              <TabsContent value="profile" className="space-y-6">
+                <Card>
+                  <CardHeader><CardTitle>Profile Details</CardTitle></CardHeader>
+                  <CardContent className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="profile.title"
+                      render={({ field }) => (
+                        <FormItem><FormLabel>Page Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="profile.subtitle"
+                      render={({ field }) => (
+                        <FormItem><FormLabel>Subtitle</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="profile.avatarUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Avatar</FormLabel>
+                            <FormControl>
+                                <FileUploader 
+                                    value={field.value} 
+                                    onChange={(url) => field.onChange(url)} 
+                                    label="Upload Avatar"
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="profile.heroUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Hero Background</FormLabel>
+                            <FormControl>
+                                <FileUploader 
+                                    value={field.value} 
+                                    onChange={(url) => field.onChange(url)} 
+                                    label="Upload Hero"
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
               <TabsContent value="discounts" className="space-y-4">
                 {discountFields.map((field, index) => (
                   <Card key={field.id} className="relative">
@@ -248,7 +288,22 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
                             <FormField control={form.control} name={`discounts.${index}.ctaLabel`} render={({ field }) => (<FormItem><FormLabel>Button Label</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                             <FormField control={form.control} name={`discounts.${index}.ctaUrl`} render={({ field }) => (<FormItem><FormLabel>Button URL</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                         </div>
-                         <FormField control={form.control} name={`discounts.${index}.imageUrl`} render={({ field }) => (<FormItem><FormLabel>Image URL</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                         <FormField 
+                            control={form.control} 
+                            name={`discounts.${index}.imageUrl`} 
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Image</FormLabel>
+                                    <FormControl>
+                                        <FileUploader 
+                                            value={field.value || ""} 
+                                            onChange={(url) => field.onChange(url)} 
+                                            label="Upload Banner"
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            )} 
+                         />
                     </CardContent>
                   </Card>
                 ))}
@@ -264,7 +319,24 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
                     <CardContent className="pt-6 space-y-4">
                          <FormField control={form.control} name={`downloads.${index}.title`} render={({ field }) => (<FormItem><FormLabel>File Title</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                          <FormField control={form.control} name={`downloads.${index}.description`} render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                         <FormField control={form.control} name={`downloads.${index}.fileUrl`} render={({ field }) => (<FormItem><FormLabel>Download URL</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                         <FormField 
+                            control={form.control} 
+                            name={`downloads.${index}.fileUrl`} 
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>File Download</FormLabel>
+                                    <FormControl>
+                                        <FileUploader 
+                                            type="file"
+                                            value={field.value} 
+                                            onChange={(url) => field.onChange(url)} 
+                                            label="Upload File"
+                                            accept="*"
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            )} 
+                         />
                     </CardContent>
                   </Card>
                 ))}
@@ -273,29 +345,33 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
                 </Button>
               </TabsContent>
 
-              <TabsContent value="socials" className="space-y-4">
-                {socialFields.map((field, index) => (
+              <TabsContent value="posts" className="space-y-4">
+                {postFields.map((field, index) => (
                   <Card key={field.id} className="relative">
-                     <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 z-10" onClick={() => removeSocial(index)}><Trash2 className="w-4 h-4" /></Button>
+                     <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 z-10" onClick={() => removePost(index)}><Trash2 className="w-4 h-4" /></Button>
                     <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                         <FormField control={form.control} name={`socials.${index}.platform`} render={({ field }) => (
+                         <FormField control={form.control} name={`posts.${index}.platform`} render={({ field }) => (
                             <FormItem><FormLabel>Platform</FormLabel><FormControl>
                                 <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" {...field}>
                                     <option value="twitter">Twitter / X</option>
                                     <option value="facebook">Facebook</option>
                                     <option value="youtube">YouTube</option>
-                                    <option value="instagram">Instagram</option>
+                                    <option value="tiktok">TikTok</option>
+                                    <option value="website">Website</option>
                                     <option value="other">Other</option>
                                 </select>
                             </FormControl></FormItem>
                          )} />
-                         <FormField control={form.control} name={`socials.${index}.label`} render={({ field }) => (<FormItem><FormLabel>Label</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                         <FormField control={form.control} name={`socials.${index}.url`} render={({ field }) => (<FormItem><FormLabel>URL</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                         <FormField control={form.control} name={`posts.${index}.label`} render={({ field }) => (<FormItem><FormLabel>Action Label</FormLabel><FormControl><Input {...field} placeholder="e.g. Share this post" /></FormControl></FormItem>)} />
+                         <FormField control={form.control} name={`posts.${index}.url`} render={({ field }) => (<FormItem><FormLabel>Post URL</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                         <div className="md:col-span-3">
+                            <FormField control={form.control} name={`posts.${index}.instruction`} render={({ field }) => (<FormItem><FormLabel>Instruction (Optional)</FormLabel><FormControl><Input {...field} placeholder="e.g. Please like and share to support us" /></FormControl></FormItem>)} />
+                         </div>
                     </CardContent>
                   </Card>
                 ))}
-                <Button type="button" variant="outline" className="w-full" onClick={() => appendSocial({ id: Date.now().toString(), platform: "twitter", url: "https://", label: "Follow" })}>
-                    <Plus className="w-4 h-4 mr-2" /> Add Social Link
+                <Button type="button" variant="outline" className="w-full" onClick={() => appendPost({ id: Date.now().toString(), platform: "twitter", url: "https://", label: "Share Post", instruction: "" })}>
+                    <Plus className="w-4 h-4 mr-2" /> Add Activity Post
                 </Button>
               </TabsContent>
 
