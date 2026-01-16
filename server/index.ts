@@ -70,29 +70,21 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
+  // ใน production เสิร์ฟไฟล์ build จริง
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
+    // ใน development ใช้ Vite dev server ร่วมกับ httpServer
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
+  // ใช้ PORT จาก env ถ้ามี (เช่นตอน deploy)
+  // ถ้าไม่มี ให้ default เป็น 3000 เวลา dev บนเครื่อง
+  const PORT = Number(process.env.PORT) || 3000;
+
+  // ตัด reusePort และ options object ออก เพื่อเลี่ยง ENOTSUP บน Windows
+  httpServer.listen(PORT, () => {
+    log(`serving on http://localhost:${PORT}`);
+  });
 })();
