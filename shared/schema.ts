@@ -14,5 +14,44 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
 });
 
+export const promoConfigSchema = z.object({
+  campaign: z.object({
+    title: z.string(),
+    subtitle: z.string().optional(),
+    avatarUrl: z.string().optional(),
+    heroUrl: z.string().optional(),
+    steps: z.array(z.string()),
+  }),
+  discounts: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      code: z.string(),
+      description: z.string().optional(),
+      ctaLabel: z.string().optional(),
+      ctaUrl: z.string().optional(),
+      imageUrl: z.string().optional(),
+    }),
+  ),
+  downloads: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      description: z.string().optional(),
+      downloadUrl: z.string(),
+    }),
+  ),
+  activities: z.array(
+    z.object({
+      id: z.string(),
+      platform: z.enum(["x", "facebook", "youtube", "tiktok", "web"]),
+      label: z.string(),
+      url: z.string(),
+      instruction: z.string().optional(),
+    }),
+  ),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type PromoConfig = z.infer<typeof promoConfigSchema>;
