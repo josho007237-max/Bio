@@ -12,6 +12,11 @@ interface DownloadCardProps {
 }
 
 export function DownloadCard({ item, index, buttonStyle }: DownloadCardProps) {
+  const hasFile =
+    Boolean(item.downloadUrl) &&
+    item.downloadUrl !== "#" &&
+    item.downloadUrl !== "/";
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -10 }}
@@ -29,9 +34,12 @@ export function DownloadCard({ item, index, buttonStyle }: DownloadCardProps) {
             {item.description && (
               <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{item.description}</p>
             )}
+            {!hasFile && (
+              <p className="text-xs text-muted-foreground mt-1">ยังไม่มีไฟล์ให้ดาวน์โหลด</p>
+            )}
           </div>
           
-          {item.downloadUrl && (
+          {hasFile && (
             <Button
               size="icon"
               variant="outline"

@@ -425,6 +425,11 @@ function AdminPanel({
                                             adminPassword={adminPassword}
                                         />
                                     </FormControl>
+                                    {field.value && (
+                                      <p className="text-xs text-muted-foreground break-all mt-2">
+                                        Current URL: {field.value}
+                                      </p>
+                                    )}
                                 </FormItem>
                             )} 
                          />
