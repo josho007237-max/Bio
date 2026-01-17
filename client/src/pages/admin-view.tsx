@@ -1,70 +1,51 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useAppConfig, AppConfigSchema, type AppConfig } from "@/lib/store";
+import { useAppConfig, PromoConfigSchema } from "@/lib/store";
+import type { PromoConfig } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Trash2, Plus, Save, ArrowLeft, LogOut } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { FileUploader } from "@/components/ui/file-upload";
+import {
+  DesignBackgroundSection,
+  DesignButtonSection,
+  DesignHeaderSection,
+  DesignPreview,
+  DesignTypographySection,
+} from "@/components/admin/design-sections";
+
+type AudienceEntry = {
+  timestamp: string;
+  email: string;
+  name?: string;
+  campaign?: string;
+  source?: string;
+  notes?: string;
+};
 
 export default function AdminView() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
-  const { config, saveConfig } = useAppConfig();
-  const [, setLocation] = useLocation();
+  const { config, setConfig, isLoading } = useAppConfig();
   const { toast } = useToast();
-
-  const envPassword = import.meta.env.VITE_ADMIN_PASSWORD;
-
-  if (!envPassword) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <Card className="w-full max-w-md border-amber-500/50 bg-amber-950/10">
-          <CardHeader>
-            <CardTitle className="text-amber-500">กรุณาตั้งค่ารหัสผ่าน (Setup Required)</CardTitle>
-            <CardDescription className="text-amber-200/80">
-              Admin Password is not configured.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-muted-foreground">
-            <p className="text-foreground font-medium">เพื่อให้หน้าแอดมินใช้งานได้และปลอดภัย กรุณาทำตามขั้นตอน:</p>
-            <ol className="list-decimal list-inside space-y-2 ml-1">
-              <li>ไปที่ <strong>Tools &gt; Secrets</strong> ใน Replit Editor</li>
-              <li>เพิ่ม Key: <code className="bg-secondary px-1 py-0.5 rounded text-primary">VITE_ADMIN_PASSWORD</code></li>
-              <li>Value: <strong>รหัสผ่านที่คุณต้องการ</strong></li>
-              <li>จากนั้นกดปุ่ม <strong>Stop</strong> และ <strong>Run</strong> ใหม่เพื่อเริ่มใช้งาน</li>
-            </ol>
-            <div className="mt-4 p-3 bg-secondary/50 rounded text-xs">
-              <span className="font-bold text-primary">Note:</span> เนื่องจากข้อจำกัดด้านความปลอดภัยของ Mockup Environment จำเป็นต้องใช้ชื่อตัวแปรที่มีคำนำหน้าว่า VITE_
-            </div>
-            <div className="text-center pt-4">
-              <Link href="/">
-                <Button variant="outline" className="w-full">Back to Home</Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === envPassword) {
-      setIsAuthenticated(true);
-    } else {
+    if (!password) {
       toast({
-        title: "รหัสผ่านไม่ถูกต้อง",
-        description: "Invalid Password",
+        title: "กรุณากรอกรหัสผ่าน",
+        description: "Password is required",
         variant: "destructive"
       });
+      return;
     }
+    setIsAuthenticated(true);
   };
 
   if (!isAuthenticated) {
@@ -101,14 +82,99 @@ export default function AdminView() {
     );
   }
 
-  return <AdminPanel config={config} onSave={saveConfig} onLogout={() => setIsAuthenticated(false)} />;
+  return (
+    <AdminPanel
+      config={config}
+      onSave={async (data) => {
+        try {
+          const response = await fetch("/api/config", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-admin-password": password,
+            },
+            body: JSON.stringify(data),
+          });
+          if (!response.ok) {
+            throw new Error(`Save failed: ${response.status}`);
+          }
+          const saved = (await response.json()) as PromoConfig;
+          setConfig(saved);
+          toast({
+            title: "Changes Saved",
+            description: "Your site has been updated.",
+          });
+        } catch (error) {
+          toast({
+            title: "Save failed",
+            description: error instanceof Error ? error.message : "Unknown error",
+            variant: "destructive",
+          });
+        }
+      }}
+      onLogout={() => setIsAuthenticated(false)}
+      adminPassword={password}
+      isLoading={isLoading}
+    />
+  );
 }
 
-function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (c: AppConfig) => void, onLogout: () => void }) {
-  const form = useForm<AppConfig>({
-    resolver: zodResolver(AppConfigSchema),
+function AdminPanel({
+  config,
+  onSave,
+  onLogout,
+  adminPassword,
+  isLoading,
+}: {
+  config: PromoConfig;
+  onSave: (c: PromoConfig) => void;
+  onLogout: () => void;
+  adminPassword: string;
+  isLoading: boolean;
+}) {
+  const form = useForm<PromoConfig>({
+    resolver: zodResolver(PromoConfigSchema),
     defaultValues: config,
   });
+
+  const [activeDesignSection, setActiveDesignSection] = useState<
+    "header" | "background" | "typography" | "buttons"
+  >("header");
+  const [audienceEntries, setAudienceEntries] = useState<AudienceEntry[]>([]);
+  const [audienceLoading, setAudienceLoading] = useState(false);
+  const [googleSheetsEnabled, setGoogleSheetsEnabled] = useState(false);
+
+  const fetchAudience = async () => {
+    setAudienceLoading(true);
+    try {
+      const response = await fetch("/api/audience");
+      const data = (await response.json()) as AudienceEntry[];
+      const enabled = response.headers.get("x-google-sheets-enabled") === "true";
+      setGoogleSheetsEnabled(enabled);
+      setAudienceEntries(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Failed to load audience", error);
+    } finally {
+      setAudienceLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    form.reset(config);
+  }, [config, form]);
+
+  useEffect(() => {
+    void fetchAudience();
+  }, []);
+
+  const formattedAudience = useMemo(
+    () =>
+      audienceEntries.map((entry) => ({
+        ...entry,
+        displayTime: new Date(entry.timestamp).toLocaleString(),
+      })),
+    [audienceEntries],
+  );
 
   const { fields: downloadFields, append: appendDownload, remove: removeDownload } = useFieldArray({
     control: form.control,
@@ -120,22 +186,18 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
     name: "discounts",
   });
 
-  const { fields: postFields, append: appendPost, remove: removePost } = useFieldArray({
+  const { fields: activityFields, append: appendActivity, remove: removeActivity } = useFieldArray({
     control: form.control,
-    name: "posts",
-  });
-  
-  const { fields: instructionFields, append: appendInstruction, remove: removeInstruction } = useFieldArray({
-      control: form.control,
-      name: "instructions" as any, 
+    name: "activities",
   });
 
-  const onSubmit = (data: AppConfig) => {
+  const { fields: stepFields, append: appendStep, remove: removeStep } = useFieldArray({
+    control: form.control,
+    name: "campaign.steps",
+  });
+
+  const onSubmit = (data: PromoConfig) => {
     onSave(data);
-    useToast().toast({
-        title: "Changes Saved",
-        description: "Your site has been updated.",
-    });
   };
 
   return (
@@ -150,7 +212,7 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
             </div>
             <div className="flex gap-2">
                 <Button variant="ghost" size="icon" onClick={onLogout}><LogOut className="w-4 h-4" /></Button>
-                <Button onClick={form.handleSubmit(onSubmit)} className="gap-2">
+                <Button onClick={form.handleSubmit(onSubmit)} className="gap-2" disabled={isLoading}>
                     <Save className="w-4 h-4" /> Save
                 </Button>
             </div>
@@ -161,12 +223,14 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <Tabs defaultValue="campaign" className="w-full">
-              <TabsList className="grid w-full grid-cols-5 mb-8">
+              <TabsList className="grid w-full grid-cols-7 mb-8">
                 <TabsTrigger value="campaign">Campaign</TabsTrigger>
                 <TabsTrigger value="profile">Profile</TabsTrigger>
                 <TabsTrigger value="discounts">Discounts</TabsTrigger>
                 <TabsTrigger value="downloads">Files</TabsTrigger>
                 <TabsTrigger value="posts">Posts</TabsTrigger>
+                <TabsTrigger value="design">Design</TabsTrigger>
+                <TabsTrigger value="audience">Audience</TabsTrigger>
               </TabsList>
 
               <TabsContent value="campaign" className="space-y-6">
@@ -175,16 +239,16 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
                   <CardContent className="space-y-4">
                      <FormField
                       control={form.control}
-                      name="campaign.name"
+                      name="campaign.title"
                       render={({ field }) => (
-                        <FormItem><FormLabel>Campaign Name (Thai/English)</FormLabel><FormControl><Input {...field} placeholder="ชื่อแคมเปญ" /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Campaign Title</FormLabel><FormControl><Input {...field} placeholder="ชื่อแคมเปญ" /></FormControl><FormMessage /></FormItem>
                       )}
                     />
                      <FormField
                       control={form.control}
-                      name="campaign.shareInstruction"
+                      name="campaign.subtitle"
                       render={({ field }) => (
-                        <FormItem><FormLabel>Share Instruction</FormLabel><FormControl><Input {...field} placeholder="ทำตามขั้นตอนง่ายๆ เพื่อรับสิทธิพิเศษ" /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Campaign Subtitle</FormLabel><FormControl><Input {...field} placeholder="คำอธิบายสั้น ๆ" /></FormControl><FormMessage /></FormItem>
                       )}
                     />
                   </CardContent>
@@ -194,24 +258,20 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
                     <CardHeader><CardTitle>Instructions</CardTitle><CardDescription>Detailed steps list</CardDescription></CardHeader>
                     <CardContent className="space-y-4">
                          <div className="space-y-2">
-                            {form.watch("instructions").map((_, index) => (
-                                <div key={index} className="flex gap-2">
+                            {stepFields.map((field, index) => (
+                                <div key={field.id} className="flex gap-2">
                                     <FormField
                                         control={form.control}
-                                        name={`instructions.${index}`}
+                                        name={`campaign.steps.${index}`}
                                         render={({ field }) => (
                                             <FormItem className="flex-1"><FormControl><Input {...field} /></FormControl></FormItem>
                                         )}
                                     />
-                                    <Button type="button" variant="destructive" size="icon" onClick={() => {
-                                        const current = form.getValues("instructions");
-                                        form.setValue("instructions", current.filter((_, i) => i !== index));
-                                    }}><Trash2 className="w-4 h-4" /></Button>
+                                    <Button type="button" variant="destructive" size="icon" onClick={() => removeStep(index)}><Trash2 className="w-4 h-4" /></Button>
                                 </div>
                             ))}
                              <Button type="button" variant="outline" size="sm" onClick={() => {
-                                 const current = form.getValues("instructions");
-                                 form.setValue("instructions", [...current, "New Step"]);
+                                 appendStep("New Step");
                              }}><Plus className="w-4 h-4 mr-2" /> Add Step</Button>
                         </div>
                     </CardContent>
@@ -224,29 +284,16 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
                   <CardContent className="space-y-4">
                     <FormField
                       control={form.control}
-                      name="profile.title"
-                      render={({ field }) => (
-                        <FormItem><FormLabel>Page Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="profile.subtitle"
-                      render={({ field }) => (
-                        <FormItem><FormLabel>Subtitle</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="profile.avatarUrl"
+                      name="campaign.avatarUrl"
                       render={({ field }) => (
                         <FormItem>
                             <FormLabel>Avatar</FormLabel>
                             <FormControl>
                                 <FileUploader 
-                                    value={field.value} 
+                                    value={field.value ?? ""} 
                                     onChange={(url) => field.onChange(url)} 
                                     label="Upload Avatar"
+                                    adminPassword={adminPassword}
                                 />
                             </FormControl>
                             <FormMessage />
@@ -255,15 +302,16 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
                     />
                      <FormField
                       control={form.control}
-                      name="profile.heroUrl"
+                      name="campaign.heroUrl"
                       render={({ field }) => (
                         <FormItem>
                             <FormLabel>Hero Background</FormLabel>
                             <FormControl>
                                 <FileUploader 
-                                    value={field.value} 
+                                    value={field.value ?? ""} 
                                     onChange={(url) => field.onChange(url)} 
                                     label="Upload Hero"
+                                    adminPassword={adminPassword}
                                 />
                             </FormControl>
                             <FormMessage />
@@ -299,6 +347,7 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
                                             value={field.value || ""} 
                                             onChange={(url) => field.onChange(url)} 
                                             label="Upload Banner"
+                                            adminPassword={adminPassword}
                                         />
                                     </FormControl>
                                 </FormItem>
@@ -307,7 +356,7 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
                     </CardContent>
                   </Card>
                 ))}
-                <Button type="button" variant="outline" className="w-full" onClick={() => appendDiscount({ id: Date.now().toString(), title: "New Offer", description: "Details here", code: "CODE123", ctaLabel: "Shop Now", ctaUrl: "https://", imageUrl: "" })}>
+                <Button type="button" variant="outline" className="w-full" onClick={() => appendDiscount({ id: Date.now().toString(), title: "New Offer", description: "", code: "CODE123", ctaLabel: "", ctaUrl: "", imageUrl: "" })}>
                     <Plus className="w-4 h-4 mr-2" /> Add Discount Card
                 </Button>
               </TabsContent>
@@ -321,17 +370,18 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
                          <FormField control={form.control} name={`downloads.${index}.description`} render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                          <FormField 
                             control={form.control} 
-                            name={`downloads.${index}.fileUrl`} 
+                            name={`downloads.${index}.downloadUrl`} 
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>File Download</FormLabel>
                                     <FormControl>
                                         <FileUploader 
                                             type="file"
-                                            value={field.value} 
+                                            value={field.value || ""} 
                                             onChange={(url) => field.onChange(url)} 
                                             label="Upload File"
                                             accept="*"
+                                            adminPassword={adminPassword}
                                         />
                                     </FormControl>
                                 </FormItem>
@@ -340,41 +390,173 @@ function AdminPanel({ config, onSave, onLogout }: { config: AppConfig, onSave: (
                     </CardContent>
                   </Card>
                 ))}
-                <Button type="button" variant="outline" className="w-full" onClick={() => appendDownload({ id: Date.now().toString(), title: "New File", description: "File details", fileUrl: "#" })}>
+                <Button type="button" variant="outline" className="w-full" onClick={() => appendDownload({ id: Date.now().toString(), title: "New File", description: "", downloadUrl: "" })}>
                     <Plus className="w-4 h-4 mr-2" /> Add Download
                 </Button>
               </TabsContent>
 
               <TabsContent value="posts" className="space-y-4">
-                {postFields.map((field, index) => (
+                {activityFields.map((field, index) => (
                   <Card key={field.id} className="relative">
-                     <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 z-10" onClick={() => removePost(index)}><Trash2 className="w-4 h-4" /></Button>
+                     <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 z-10" onClick={() => removeActivity(index)}><Trash2 className="w-4 h-4" /></Button>
                     <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                         <FormField control={form.control} name={`posts.${index}.platform`} render={({ field }) => (
+                         <FormField control={form.control} name={`activities.${index}.platform`} render={({ field }) => (
                             <FormItem><FormLabel>Platform</FormLabel><FormControl>
                                 <select className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" {...field}>
-                                    <option value="twitter">Twitter / X</option>
+                                    <option value="x">Twitter / X</option>
                                     <option value="facebook">Facebook</option>
                                     <option value="youtube">YouTube</option>
                                     <option value="tiktok">TikTok</option>
-                                    <option value="website">Website</option>
-                                    <option value="other">Other</option>
+                                    <option value="web">Website</option>
                                 </select>
                             </FormControl></FormItem>
                          )} />
-                         <FormField control={form.control} name={`posts.${index}.label`} render={({ field }) => (<FormItem><FormLabel>Action Label</FormLabel><FormControl><Input {...field} placeholder="e.g. Share this post" /></FormControl></FormItem>)} />
-                         <FormField control={form.control} name={`posts.${index}.url`} render={({ field }) => (<FormItem><FormLabel>Post URL</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                         <FormField control={form.control} name={`activities.${index}.label`} render={({ field }) => (<FormItem><FormLabel>Action Label</FormLabel><FormControl><Input {...field} placeholder="e.g. Share this post" /></FormControl></FormItem>)} />
+                         <FormField control={form.control} name={`activities.${index}.url`} render={({ field }) => (<FormItem><FormLabel>Post URL</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                          <div className="md:col-span-3">
-                            <FormField control={form.control} name={`posts.${index}.instruction`} render={({ field }) => (<FormItem><FormLabel>Instruction (Optional)</FormLabel><FormControl><Input {...field} placeholder="e.g. Please like and share to support us" /></FormControl></FormItem>)} />
+                            <FormField control={form.control} name={`activities.${index}.instruction`} render={({ field }) => (<FormItem><FormLabel>Instruction (Optional)</FormLabel><FormControl><Input {...field} placeholder="e.g. Please like and share to support us" /></FormControl></FormItem>)} />
                          </div>
                     </CardContent>
                   </Card>
                 ))}
-                <Button type="button" variant="outline" className="w-full" onClick={() => appendPost({ id: Date.now().toString(), platform: "twitter", url: "https://", label: "Share Post", instruction: "" })}>
+                <Button type="button" variant="outline" className="w-full" onClick={() => appendActivity({ id: Date.now().toString(), platform: "x", url: "https://", label: "Share Post", instruction: "" })}>
                     <Plus className="w-4 h-4 mr-2" /> Add Activity Post
                 </Button>
               </TabsContent>
 
+              <TabsContent value="design" className="space-y-6">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-[200px_1fr]">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Design Menu</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <Button
+                        type="button"
+                        variant={activeDesignSection === "header" ? "default" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => setActiveDesignSection("header")}
+                      >
+                        Header
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={activeDesignSection === "background" ? "default" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => setActiveDesignSection("background")}
+                      >
+                        Background
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={activeDesignSection === "typography" ? "default" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => setActiveDesignSection("typography")}
+                      >
+                        Text
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={activeDesignSection === "buttons" ? "default" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => setActiveDesignSection("buttons")}
+                      >
+                        Buttons
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <div className="space-y-6">
+                    <DesignPreview
+                      campaign={form.watch("campaign")}
+                      design={form.watch("design")}
+                    />
+                    {activeDesignSection === "header" && (
+                      <DesignHeaderSection control={form.control} />
+                    )}
+                    {activeDesignSection === "background" && (
+                      <DesignBackgroundSection
+                        control={form.control}
+                        adminPassword={adminPassword}
+                      />
+                    )}
+                    {activeDesignSection === "typography" && (
+                      <DesignTypographySection control={form.control} />
+                    )}
+                    {activeDesignSection === "buttons" && (
+                      <DesignButtonSection control={form.control} />
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="audience" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Audience Events</CardTitle>
+                    <CardDescription>Latest subscribers captured by your promo page.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {formattedAudience.length} entries
+                      </div>
+                      <Button type="button" variant="outline" onClick={fetchAudience} disabled={audienceLoading}>
+                        {audienceLoading ? "Refreshing..." : "Refresh"}
+                      </Button>
+                    </div>
+                    <div className="overflow-x-auto rounded-lg border border-white/10">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-white/5 text-muted-foreground">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-medium">Timestamp</th>
+                            <th className="px-3 py-2 text-left font-medium">Email</th>
+                            <th className="px-3 py-2 text-left font-medium">Name</th>
+                            <th className="px-3 py-2 text-left font-medium">Campaign</th>
+                            <th className="px-3 py-2 text-left font-medium">Source</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formattedAudience.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
+                                No audience entries yet.
+                              </td>
+                            </tr>
+                          )}
+                          {formattedAudience.map((entry) => (
+                            <tr key={`${entry.timestamp}-${entry.email}`} className="border-t border-white/5">
+                              <td className="px-3 py-2">{entry.displayTime}</td>
+                              <td className="px-3 py-2">{entry.email}</td>
+                              <td className="px-3 py-2">{entry.name || "-"}</td>
+                              <td className="px-3 py-2">{entry.campaign || "-"}</td>
+                              <td className="px-3 py-2">{entry.source || "-"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Google Sheets Integration</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm text-muted-foreground">
+                    <div>
+                      Status:{" "}
+                      <span className={googleSheetsEnabled ? "text-emerald-400" : "text-amber-400"}>
+                        {googleSheetsEnabled ? "Enabled" : "Not configured"}
+                      </span>
+                    </div>
+                    <p>
+                      สร้าง Google Apps Script webhook ที่รับ JSON แล้วเขียนลง Sheet จากนั้นนำ URL มาใส่ใน env{" "}
+                      <code className="rounded bg-secondary px-1 py-0.5 text-primary">GOOGLE_SHEETS_WEBHOOK_URL</code>
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
             </Tabs>
           </form>
         </Form>

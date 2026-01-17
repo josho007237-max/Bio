@@ -1,6 +1,14 @@
-import type { Express } from "express";
+import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import multer from "multer";
+import path from "path";
+import fs from "fs/promises";
+import { promoConfigSchema } from "@shared/schema";
+import { z } from "zod";
+import { appendAudience, loadAudience, loadConfig, saveConfig } from "./storage";
+
+const ADMIN_PASSWORD = process.env.VITE_ADMIN_PASSWORD;
+const GOOGLE_SHEETS_WEBHOOK_URL = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
 
 export async function registerRoutes(
   httpServer: Server,
@@ -11,6 +19,110 @@ export async function registerRoutes(
 
   // use storage to perform CRUD operations on the storage interface
   // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
+
+  const uploadDir = path.resolve(process.cwd(), "uploads");
+  await fs.mkdir(uploadDir, { recursive: true });
+  const upload = multer({ dest: uploadDir });
+
+  const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
+    const password = req.header("x-admin-password");
+    if (!ADMIN_PASSWORD || password !== ADMIN_PASSWORD) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    return next();
+  };
+
+  app.use("/uploads", express.static(uploadDir));
+
+  app.get("/api/config", async (_req, res, next) => {
+    try {
+      const config = await loadConfig();
+      res.json(config);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/config", requireAdmin, async (req, res, next) => {
+    try {
+      const parsed = promoConfigSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Invalid config",
+          errors: parsed.error.flatten(),
+        });
+      }
+      await saveConfig(parsed.data);
+      return res.json(parsed.data);
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  app.post(
+    "/api/upload",
+    requireAdmin,
+    upload.single("file"),
+    (req, res) => {
+      if (!req.file) {
+        return res.status(400).json({ message: "File is required" });
+      }
+      return res.json({ url: `/uploads/${req.file.filename}` });
+    },
+  );
+
+  const audienceSchema = z.object({
+    email: z.string().email(),
+    name: z.string().optional(),
+    campaign: z.string().optional(),
+    source: z.string().optional(),
+    notes: z.string().optional(),
+  });
+
+  app.get("/api/audience", async (_req, res, next) => {
+    try {
+      const entries = await loadAudience();
+      res.set("x-google-sheets-enabled", String(Boolean(GOOGLE_SHEETS_WEBHOOK_URL)));
+      res.json(entries);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/audience", async (req, res, next) => {
+    try {
+      const parsed = audienceSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Invalid audience payload",
+          errors: parsed.error.flatten(),
+        });
+      }
+
+      const entry = {
+        ...parsed.data,
+        timestamp: new Date().toISOString(),
+      };
+
+      await appendAudience(entry);
+
+      if (GOOGLE_SHEETS_WEBHOOK_URL) {
+        try {
+          await fetch(GOOGLE_SHEETS_WEBHOOK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...entry, timestamp: entry.timestamp }),
+          });
+        } catch (error) {
+          console.warn("Failed to post audience to Google Sheets webhook", error);
+        }
+      }
+
+      return res.json({ ok: true });
+    } catch (error) {
+      return next(error);
+    }
+  });
 
   return httpServer;
 }

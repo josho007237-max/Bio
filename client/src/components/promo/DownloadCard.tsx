@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { motion } from "framer-motion";
 import { Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,9 +8,10 @@ import { DownloadItem } from "@/lib/store";
 interface DownloadCardProps {
   item: DownloadItem;
   index: number;
+  buttonStyle?: CSSProperties;
 }
 
-export function DownloadCard({ item, index }: DownloadCardProps) {
+export function DownloadCard({ item, index, buttonStyle }: DownloadCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, x: -10 }}
@@ -24,14 +26,24 @@ export function DownloadCard({ item, index }: DownloadCardProps) {
           
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-foreground truncate">{item.title}</h3>
-            <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{item.description}</p>
+            {item.description && (
+              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{item.description}</p>
+            )}
           </div>
           
-          <Button size="icon" variant="ghost" className="shrink-0 text-primary hover:text-primary hover:bg-primary/20" asChild>
-            <a href={item.fileUrl} target="_blank" rel="noopener noreferrer" download>
-              <Download className="w-5 h-5" />
-            </a>
-          </Button>
+          {item.downloadUrl && (
+            <Button
+              size="icon"
+              variant="outline"
+              className="shrink-0"
+              style={buttonStyle}
+              asChild
+            >
+              <a href={item.downloadUrl} target="_blank" rel="noopener noreferrer" download>
+                <Download className="w-5 h-5" />
+              </a>
+            </Button>
+          )}
         </CardContent>
       </Card>
     </motion.div>

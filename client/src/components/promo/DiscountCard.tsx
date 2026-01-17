@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Copy, Check, ExternalLink } from "lucide-react";
@@ -8,9 +9,10 @@ import { useToast } from "@/hooks/use-toast";
 
 interface DiscountCardProps {
   item: DiscountItem;
+  buttonStyle?: CSSProperties;
 }
 
-export function DiscountCard({ item }: DiscountCardProps) {
+export function DiscountCard({ item, buttonStyle }: DiscountCardProps) {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
@@ -45,7 +47,9 @@ export function DiscountCard({ item }: DiscountCardProps) {
         <CardContent className="p-5 space-y-4">
           <div className="space-y-1">
             <h3 className="text-xl font-display font-bold text-foreground">{item.title}</h3>
-            <p className="text-sm text-muted-foreground">{item.description}</p>
+            {item.description && (
+              <p className="text-sm text-muted-foreground">{item.description}</p>
+            )}
           </div>
 
           <div className="flex items-stretch gap-2">
@@ -62,11 +66,17 @@ export function DiscountCard({ item }: DiscountCardProps) {
             </div>
           </div>
 
-          <Button className="w-full font-semibold h-11 text-base bg-primary text-primary-foreground hover:bg-primary/90" asChild>
-            <a href={item.ctaUrl} target="_blank" rel="noopener noreferrer">
-              {item.ctaLabel} <ExternalLink className="w-4 h-4 ml-2" />
-            </a>
-          </Button>
+          {item.ctaLabel && item.ctaUrl && (
+            <Button
+              className="w-full font-semibold h-11 text-base"
+              style={buttonStyle}
+              asChild
+            >
+              <a href={item.ctaUrl} target="_blank" rel="noopener noreferrer">
+                {item.ctaLabel} <ExternalLink className="w-4 h-4 ml-2" />
+              </a>
+            </Button>
+          )}
         </CardContent>
       </Card>
     </motion.div>
