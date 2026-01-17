@@ -1,4 +1,4 @@
-import { type AudienceEntry, type PromoConfig, type User, type InsertUser } from "@shared/schema";
+import { type PromoConfig, type User, type InsertUser } from "@shared/schema";
 import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
@@ -41,36 +41,11 @@ export const storage = new MemStorage();
 
 const configDir = path.resolve(process.cwd(), "data");
 const configPath = path.join(configDir, "promo-config.json");
-const audiencePath = path.join(configDir, "audience.json");
 
 const defaultConfig: PromoConfig = {
   campaign: {
     title: "",
-    shareMessage: "",
     steps: [],
-  },
-  audience: {
-    enabled: true,
-    title: "Subscribe",
-    description: "Get updates and exclusive offers.",
-  },
-  design: {
-    headerLayout: "hero",
-    background: {
-      style: "solid",
-      color1: "#000000",
-    },
-    typography: {
-      titleFont: "Anton",
-      titleColor: "#FFFFFF",
-      bodyColor: "#EDE5E5",
-    },
-    buttons: {
-      style: "solid",
-      backgroundColor: "#FFFFFF",
-      textColor: "#000000",
-      borderRadius: 16,
-    },
   },
   discounts: [],
   downloads: [],
@@ -99,35 +74,4 @@ export async function loadConfig(): Promise<PromoConfig> {
 export async function saveConfig(config: PromoConfig): Promise<void> {
   await fs.mkdir(configDir, { recursive: true });
   await fs.writeFile(configPath, JSON.stringify(config, null, 2));
-}
-
-export async function loadAudience(): Promise<AudienceEntry[]> {
-  try {
-    const raw = await fs.readFile(audiencePath, "utf-8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as AudienceEntry[]) : [];
-  } catch (error) {
-    const notFound =
-      error instanceof Error &&
-      "code" in error &&
-      (error as NodeJS.ErrnoException).code === "ENOENT";
-    if (!notFound) {
-      throw error;
-    }
-    await fs.mkdir(configDir, { recursive: true });
-    await fs.writeFile(audiencePath, JSON.stringify([], null, 2));
-    return [];
-  }
-}
-
-export async function saveAudience(entries: AudienceEntry[]): Promise<void> {
-  await fs.mkdir(configDir, { recursive: true });
-  await fs.writeFile(audiencePath, JSON.stringify(entries, null, 2));
-}
-
-export async function appendAudience(entry: AudienceEntry): Promise<AudienceEntry[]> {
-  const entries = await loadAudience();
-  const next = [entry, ...entries];
-  await saveAudience(next);
-  return next;
 }
