@@ -158,7 +158,7 @@ export async function registerRoutes(
 
       const config = await loadConfig();
       const campaignTitle = config.campaign.title?.trim() || "Default Campaign";
-      const rawSource = req.query.source ?? req.query.utm_source;
+      const rawSource = req.query.utm_source ?? req.query.source;
       const trafficSource = Array.isArray(rawSource) ? rawSource[0] : rawSource;
 
       const entry = {
@@ -182,13 +182,14 @@ export async function registerRoutes(
     try {
       const entries = await loadSubscribers();
       const rows = [
-        ["Email", "Name", "Campaign", "Traffic Source", "Signed At"],
+        ["Email", "Name", "Campaign", "Traffic Source", "Signed At", "Note/Tag"],
         ...entries.map((entry) => [
           entry.email,
           entry.name ?? "",
           entry.campaign ?? "",
           entry.trafficSource ?? "",
           entry.signedAt,
+          "",
         ]),
       ];
       res.json(rows);
