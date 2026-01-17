@@ -158,7 +158,7 @@ export async function registerRoutes(
 
       const config = await loadConfig();
       const campaignTitle = config.campaign.title?.trim() || "Default Campaign";
-      const rawSource = req.query.source;
+      const rawSource = req.query.source ?? req.query.utm_source;
       const trafficSource = Array.isArray(rawSource) ? rawSource[0] : rawSource;
 
       const entry = {
