@@ -26,7 +26,9 @@ type SubscriberEntry = {
   id: string;
   email: string;
   name?: string;
-  createdAt: string;
+  campaign?: string;
+  trafficSource?: string;
+  signedAt: string;
 };
 
 export default function AdminView() {
@@ -142,6 +144,8 @@ function AdminPanel({
   >("header");
   const [subscribers, setSubscribers] = useState<SubscriberEntry[]>([]);
   const [subscribersLoading, setSubscribersLoading] = useState(false);
+  const [spreadsheetId, setSpreadsheetId] = useState("");
+  const [sheetName, setSheetName] = useState("Subscribers");
 
   const fetchSubscribers = async () => {
     setSubscribersLoading(true);
@@ -168,7 +172,7 @@ function AdminPanel({
     () =>
       subscribers.map((entry) => ({
         ...entry,
-        displayTime: new Date(entry.createdAt).toLocaleString(),
+        displayTime: new Date(entry.signedAt).toLocaleString(),
       })),
     [subscribers],
   );
@@ -561,16 +565,17 @@ function AdminPanel({
                       <table className="min-w-full text-sm">
                         <thead className="bg-white/5 text-muted-foreground">
                           <tr>
-                            <th className="px-3 py-2 text-left font-medium">Created</th>
+                            <th className="px-3 py-2 text-left font-medium">Signed At</th>
                             <th className="px-3 py-2 text-left font-medium">Email</th>
                             <th className="px-3 py-2 text-left font-medium">Name</th>
-                            <th className="px-3 py-2 text-left font-medium">ID</th>
+                            <th className="px-3 py-2 text-left font-medium">Campaign</th>
+                            <th className="px-3 py-2 text-left font-medium">Traffic Source</th>
                           </tr>
                         </thead>
                         <tbody>
                           {formattedSubscribers.length === 0 && (
                             <tr>
-                              <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
+                              <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
                                 No subscribers yet.
                               </td>
                             </tr>
@@ -580,12 +585,42 @@ function AdminPanel({
                               <td className="px-3 py-2">{entry.displayTime}</td>
                               <td className="px-3 py-2">{entry.email}</td>
                               <td className="px-3 py-2">{entry.name || "-"}</td>
-                              <td className="px-3 py-2 text-xs text-muted-foreground">{entry.id}</td>
+                              <td className="px-3 py-2">{entry.campaign || "-"}</td>
+                              <td className="px-3 py-2">{entry.trafficSource || "-"}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Google Sheets Export</CardTitle>
+                    <CardDescription>Configure export targets for a future Google Sheets sync.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <FormItem>
+                      <FormLabel>Spreadsheet ID</FormLabel>
+                      <FormControl>
+                        <Input
+                          value={spreadsheetId}
+                          onChange={(event) => setSpreadsheetId(event.target.value)}
+                          placeholder="1A2B3C..."
+                        />
+                      </FormControl>
+                    </FormItem>
+                    <FormItem>
+                      <FormLabel>Sheet Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          value={sheetName}
+                          onChange={(event) => setSheetName(event.target.value)}
+                          placeholder="Subscribers"
+                        />
+                      </FormControl>
+                    </FormItem>
                   </CardContent>
                 </Card>
               </TabsContent>

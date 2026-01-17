@@ -81,7 +81,9 @@ export const audienceEntrySchema = z.object({
   id: z.string(),
   email: z.string().email(),
   name: z.string().optional(),
-  createdAt: z.string(),
+  campaign: z.string().optional(),
+  trafficSource: z.string().optional(),
+  signedAt: z.string(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

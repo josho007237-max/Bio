@@ -156,11 +156,18 @@ export async function registerRoutes(
         });
       }
 
+      const config = await loadConfig();
+      const campaignTitle = config.campaign.title?.trim() || "Default Campaign";
+      const rawSource = req.query.source;
+      const trafficSource = Array.isArray(rawSource) ? rawSource[0] : rawSource;
+
       const entry = {
         id: randomUUID(),
         email: parsed.data.email,
         name: parsed.data.name,
-        createdAt: new Date().toISOString(),
+        campaign: campaignTitle,
+        trafficSource: trafficSource || undefined,
+        signedAt: new Date().toISOString(),
       };
 
       await appendSubscriber(entry);
@@ -168,6 +175,25 @@ export async function registerRoutes(
       return res.json({ message: "Subscribed", id: entry.id });
     } catch (error) {
       return next(error);
+    }
+  });
+
+  app.post("/api/subscribers/export-preview", async (_req, res, next) => {
+    try {
+      const entries = await loadSubscribers();
+      const rows = [
+        ["Email", "Name", "Campaign", "Traffic Source", "Signed At"],
+        ...entries.map((entry) => [
+          entry.email,
+          entry.name ?? "",
+          entry.campaign ?? "",
+          entry.trafficSource ?? "",
+          entry.signedAt,
+        ]),
+      ];
+      res.json(rows);
+    } catch (error) {
+      next(error);
     }
   });
 
