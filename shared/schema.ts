@@ -22,6 +22,11 @@ export const promoConfigSchema = z.object({
     heroUrl: z.string().optional(),
     steps: z.array(z.string()),
   }),
+  audience: z.object({
+    enabled: z.boolean().default(true),
+    title: z.string().default("Subscribe"),
+    description: z.string().default("Get updates and exclusive offers."),
+  }),
   design: z.object({
     headerLayout: z.enum(["classic", "hero"]).default("hero"),
     background: z.object({
@@ -72,6 +77,14 @@ export const promoConfigSchema = z.object({
   ),
 });
 
+export const audienceEntrySchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  name: z.string().optional(),
+  createdAt: z.string(),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type PromoConfig = z.infer<typeof promoConfigSchema>;
+export type AudienceEntry = z.infer<typeof audienceEntrySchema>;

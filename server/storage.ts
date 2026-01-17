@@ -1,4 +1,4 @@
-import { type PromoConfig, type User, type InsertUser } from "@shared/schema";
+import { type AudienceEntry, type PromoConfig, type User, type InsertUser } from "@shared/schema";
 import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
@@ -42,11 +42,17 @@ export const storage = new MemStorage();
 const configDir = path.resolve(process.cwd(), "data");
 const configPath = path.join(configDir, "promo-config.json");
 const audiencePath = path.join(configDir, "audience.json");
+const subscribersPath = path.join(configDir, "subscribers.json");
 
 const defaultConfig: PromoConfig = {
   campaign: {
     title: "",
     steps: [],
+  },
+  audience: {
+    enabled: true,
+    title: "Subscribe",
+    description: "Get updates and exclusive offers.",
   },
   design: {
     headerLayout: "hero",
@@ -95,7 +101,7 @@ export async function saveConfig(config: PromoConfig): Promise<void> {
   await fs.writeFile(configPath, JSON.stringify(config, null, 2));
 }
 
-export type AudienceEntry = {
+export type AudienceEvent = {
   timestamp: string;
   email: string;
   name?: string;
@@ -104,9 +110,38 @@ export type AudienceEntry = {
   notes?: string;
 };
 
-export async function loadAudience(): Promise<AudienceEntry[]> {
+export async function loadAudience(): Promise<AudienceEvent[]> {
   try {
     const raw = await fs.readFile(audiencePath, "utf-8");
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as AudienceEvent[]) : [];
+  } catch (error) {
+    const notFound =
+      error instanceof Error &&
+      "code" in error &&
+      (error as NodeJS.ErrnoException).code === "ENOENT";
+    if (!notFound) {
+      throw error;
+    }
+    return [];
+  }
+}
+
+export async function saveAudience(entries: AudienceEvent[]): Promise<void> {
+  await fs.mkdir(configDir, { recursive: true });
+  await fs.writeFile(audiencePath, JSON.stringify(entries, null, 2));
+}
+
+export async function appendAudience(entry: AudienceEvent): Promise<AudienceEvent[]> {
+  const entries = await loadAudience();
+  const next = [entry, ...entries];
+  await saveAudience(next);
+  return next;
+}
+
+export async function loadSubscribers(): Promise<AudienceEntry[]> {
+  try {
+    const raw = await fs.readFile(subscribersPath, "utf-8");
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as AudienceEntry[]) : [];
   } catch (error) {
@@ -121,14 +156,14 @@ export async function loadAudience(): Promise<AudienceEntry[]> {
   }
 }
 
-export async function saveAudience(entries: AudienceEntry[]): Promise<void> {
+export async function saveSubscribers(entries: AudienceEntry[]): Promise<void> {
   await fs.mkdir(configDir, { recursive: true });
-  await fs.writeFile(audiencePath, JSON.stringify(entries, null, 2));
+  await fs.writeFile(subscribersPath, JSON.stringify(entries, null, 2));
 }
 
-export async function appendAudience(entry: AudienceEntry): Promise<AudienceEntry[]> {
-  const entries = await loadAudience();
+export async function appendSubscriber(entry: AudienceEntry): Promise<AudienceEntry[]> {
+  const entries = await loadSubscribers();
   const next = [entry, ...entries];
-  await saveAudience(next);
+  await saveSubscribers(next);
   return next;
 }

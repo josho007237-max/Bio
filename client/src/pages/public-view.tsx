@@ -16,8 +16,8 @@ export default function PublicView() {
   const { config } = useAppConfig();
   const { design } = config;
   const { toast } = useToast();
-  const [audienceEmail, setAudienceEmail] = useState("");
-  const [audienceName, setAudienceName] = useState("");
+  const [subscriberEmail, setSubscriberEmail] = useState("");
+  const [subscriberName, setSubscriberName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const backgroundStyle = getBackgroundStyle(design);
@@ -28,7 +28,7 @@ export default function PublicView() {
   };
 
   const submitAudience = async () => {
-    if (!audienceEmail) {
+    if (!subscriberEmail) {
       toast({
         title: "Email required",
         description: "Please enter your email.",
@@ -39,21 +39,19 @@ export default function PublicView() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/audience", {
+      const response = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: audienceEmail,
-          name: audienceName || undefined,
-          campaign: config.campaign.title,
-          source: "public-form",
+          email: subscriberEmail,
+          name: subscriberName || undefined,
         }),
       });
       if (!response.ok) {
         throw new Error(`Submit failed: ${response.status}`);
       }
-      setAudienceEmail("");
-      setAudienceName("");
+      setSubscriberEmail("");
+      setSubscriberName("");
       toast({
         title: "Thanks for signing up!",
         description: "We have saved your details.",
@@ -101,6 +99,40 @@ export default function PublicView() {
           titleFont={resolveFontFamily(design.typography.titleFont)}
         />
 
+        {config.audience.enabled && (
+          <section className="px-4 mt-4 space-y-3">
+            <h2 className="text-lg font-semibold" style={titleStyle}>
+              {config.audience.title}
+            </h2>
+            {config.audience.description && (
+              <p className="text-sm" style={{ color: design.typography.bodyColor }}>
+                {config.audience.description}
+              </p>
+            )}
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
+              <Input
+                placeholder="Your name (optional)"
+                value={subscriberName}
+                onChange={(event) => setSubscriberName(event.target.value)}
+              />
+              <Input
+                placeholder="Email address"
+                type="email"
+                value={subscriberEmail}
+                onChange={(event) => setSubscriberEmail(event.target.value)}
+              />
+              <Button
+                className="w-full font-semibold"
+                style={buttonStyle}
+                onClick={submitAudience}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Submitting..." : "Subscribe"}
+              </Button>
+            </div>
+          </section>
+        )}
+
         {/* Instructions */}
         <InstructionBlock instructions={config.campaign.steps} />
 
@@ -142,31 +174,6 @@ export default function PublicView() {
               </div>
             </section>
           )}
-
-          <section className="space-y-3">
-            <h2 className="text-lg font-semibold pl-1" style={titleStyle}>Stay in the loop</h2>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
-              <Input
-                placeholder="Your name (optional)"
-                value={audienceName}
-                onChange={(event) => setAudienceName(event.target.value)}
-              />
-              <Input
-                placeholder="Email address"
-                type="email"
-                value={audienceEmail}
-                onChange={(event) => setAudienceEmail(event.target.value)}
-              />
-              <Button
-                className="w-full font-semibold"
-                style={buttonStyle}
-                onClick={submitAudience}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Submitting..." : "Join the audience"}
-              </Button>
-            </div>
-          </section>
 
         </main>
         

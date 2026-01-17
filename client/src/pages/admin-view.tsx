@@ -5,9 +5,11 @@ import { useAppConfig, PromoConfigSchema } from "@/lib/store";
 import type { PromoConfig } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
 import { Trash2, Plus, Save, ArrowLeft, LogOut } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -20,13 +22,11 @@ import {
   DesignTypographySection,
 } from "@/components/admin/design-sections";
 
-type AudienceEntry = {
-  timestamp: string;
+type SubscriberEntry = {
+  id: string;
   email: string;
   name?: string;
-  campaign?: string;
-  source?: string;
-  notes?: string;
+  createdAt: string;
 };
 
 export default function AdminView() {
@@ -140,22 +140,19 @@ function AdminPanel({
   const [activeDesignSection, setActiveDesignSection] = useState<
     "header" | "background" | "typography" | "buttons"
   >("header");
-  const [audienceEntries, setAudienceEntries] = useState<AudienceEntry[]>([]);
-  const [audienceLoading, setAudienceLoading] = useState(false);
-  const [googleSheetsEnabled, setGoogleSheetsEnabled] = useState(false);
+  const [subscribers, setSubscribers] = useState<SubscriberEntry[]>([]);
+  const [subscribersLoading, setSubscribersLoading] = useState(false);
 
-  const fetchAudience = async () => {
-    setAudienceLoading(true);
+  const fetchSubscribers = async () => {
+    setSubscribersLoading(true);
     try {
-      const response = await fetch("/api/audience");
-      const data = (await response.json()) as AudienceEntry[];
-      const enabled = response.headers.get("x-google-sheets-enabled") === "true";
-      setGoogleSheetsEnabled(enabled);
-      setAudienceEntries(Array.isArray(data) ? data : []);
+      const response = await fetch("/api/subscribers");
+      const data = (await response.json()) as SubscriberEntry[];
+      setSubscribers(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Failed to load audience", error);
+      console.error("Failed to load subscribers", error);
     } finally {
-      setAudienceLoading(false);
+      setSubscribersLoading(false);
     }
   };
 
@@ -164,16 +161,16 @@ function AdminPanel({
   }, [config, form]);
 
   useEffect(() => {
-    void fetchAudience();
+    void fetchSubscribers();
   }, []);
 
-  const formattedAudience = useMemo(
+  const formattedSubscribers = useMemo(
     () =>
-      audienceEntries.map((entry) => ({
+      subscribers.map((entry) => ({
         ...entry,
-        displayTime: new Date(entry.timestamp).toLocaleString(),
+        displayTime: new Date(entry.createdAt).toLocaleString(),
       })),
-    [audienceEntries],
+    [subscribers],
   );
 
   const { fields: downloadFields, append: appendDownload, remove: removeDownload } = useFieldArray({
@@ -493,67 +490,102 @@ function AdminPanel({
               <TabsContent value="audience" className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Audience Events</CardTitle>
-                    <CardDescription>Latest subscribers captured by your promo page.</CardDescription>
+                    <CardTitle>Audience Form</CardTitle>
+                    <CardDescription>Configure the signup form shown on the public page.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="audience.enabled"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center justify-between rounded-lg border border-white/10 p-3">
+                          <div>
+                            <FormLabel>Show signup form</FormLabel>
+                            <p className="text-xs text-muted-foreground">
+                              Toggle to display the email capture form on the public page.
+                            </p>
+                          </div>
+                          <FormControl>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="audience.title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Form Title</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Subscribe for updates" />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="audience.description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea rows={3} {...field} placeholder="Short message about the perk." />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Subscribers</CardTitle>
+                    <CardDescription>Latest signups from the public form.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-muted-foreground">
-                        Showing {formattedAudience.length} entries
+                        Showing {formattedSubscribers.length} entries
                       </div>
-                      <Button type="button" variant="outline" onClick={fetchAudience} disabled={audienceLoading}>
-                        {audienceLoading ? "Refreshing..." : "Refresh"}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={fetchSubscribers}
+                        disabled={subscribersLoading}
+                      >
+                        {subscribersLoading ? "Refreshing..." : "Refresh"}
                       </Button>
                     </div>
                     <div className="overflow-x-auto rounded-lg border border-white/10">
                       <table className="min-w-full text-sm">
                         <thead className="bg-white/5 text-muted-foreground">
                           <tr>
-                            <th className="px-3 py-2 text-left font-medium">Timestamp</th>
+                            <th className="px-3 py-2 text-left font-medium">Created</th>
                             <th className="px-3 py-2 text-left font-medium">Email</th>
                             <th className="px-3 py-2 text-left font-medium">Name</th>
-                            <th className="px-3 py-2 text-left font-medium">Campaign</th>
-                            <th className="px-3 py-2 text-left font-medium">Source</th>
+                            <th className="px-3 py-2 text-left font-medium">ID</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {formattedAudience.length === 0 && (
+                          {formattedSubscribers.length === 0 && (
                             <tr>
-                              <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
-                                No audience entries yet.
+                              <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
+                                No subscribers yet.
                               </td>
                             </tr>
                           )}
-                          {formattedAudience.map((entry) => (
-                            <tr key={`${entry.timestamp}-${entry.email}`} className="border-t border-white/5">
+                          {formattedSubscribers.map((entry) => (
+                            <tr key={entry.id} className="border-t border-white/5">
                               <td className="px-3 py-2">{entry.displayTime}</td>
                               <td className="px-3 py-2">{entry.email}</td>
                               <td className="px-3 py-2">{entry.name || "-"}</td>
-                              <td className="px-3 py-2">{entry.campaign || "-"}</td>
-                              <td className="px-3 py-2">{entry.source || "-"}</td>
+                              <td className="px-3 py-2 text-xs text-muted-foreground">{entry.id}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Google Sheets Integration</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm text-muted-foreground">
-                    <div>
-                      Status:{" "}
-                      <span className={googleSheetsEnabled ? "text-emerald-400" : "text-amber-400"}>
-                        {googleSheetsEnabled ? "Enabled" : "Not configured"}
-                      </span>
-                    </div>
-                    <p>
-                      สร้าง Google Apps Script webhook ที่รับ JSON แล้วเขียนลง Sheet จากนั้นนำ URL มาใส่ใน env{" "}
-                      <code className="rounded bg-secondary px-1 py-0.5 text-primary">GOOGLE_SHEETS_WEBHOOK_URL</code>
-                    </p>
                   </CardContent>
                 </Card>
               </TabsContent>

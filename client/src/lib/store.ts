@@ -15,6 +15,11 @@ const DEFAULT_CONFIG: PromoConfig = {
     heroUrl: "",
     steps: [],
   },
+  audience: {
+    enabled: true,
+    title: "Subscribe",
+    description: "Get updates and exclusive offers.",
+  },
   design: {
     headerLayout: "hero",
     background: {

@@ -5,7 +5,15 @@ import path from "path";
 import fs from "fs/promises";
 import { promoConfigSchema } from "@shared/schema";
 import { z } from "zod";
-import { appendAudience, loadAudience, loadConfig, saveConfig } from "./storage";
+import { randomUUID } from "crypto";
+import {
+  appendAudience,
+  appendSubscriber,
+  loadAudience,
+  loadConfig,
+  loadSubscribers,
+  saveConfig,
+} from "./storage";
 
 const ADMIN_PASSWORD = process.env.VITE_ADMIN_PASSWORD;
 const GOOGLE_SHEETS_WEBHOOK_URL = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
@@ -119,6 +127,45 @@ export async function registerRoutes(
       }
 
       return res.json({ ok: true });
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  const subscribeSchema = z.object({
+    email: z.string().email(),
+    name: z.string().optional(),
+  });
+
+  app.get("/api/subscribers", async (_req, res, next) => {
+    try {
+      const entries = await loadSubscribers();
+      res.json(entries);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/subscribe", async (req, res, next) => {
+    try {
+      const parsed = subscribeSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Invalid subscriber payload",
+          errors: parsed.error.flatten(),
+        });
+      }
+
+      const entry = {
+        id: randomUUID(),
+        email: parsed.data.email,
+        name: parsed.data.name,
+        createdAt: new Date().toISOString(),
+      };
+
+      await appendSubscriber(entry);
+
+      return res.json({ message: "Subscribed", id: entry.id });
     } catch (error) {
       return next(error);
     }
