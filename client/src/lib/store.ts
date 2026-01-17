@@ -13,6 +13,7 @@ const DEFAULT_CONFIG: PromoConfig = {
     subtitle: "",
     avatarUrl: "",
     heroUrl: "",
+    shareMessage: "",
     steps: [],
   },
   audience: {

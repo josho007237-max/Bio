@@ -22,13 +22,14 @@ import {
   DesignTypographySection,
 } from "@/components/admin/design-sections";
 
-type SubscriberEntry = {
+type AudienceEntry = {
   id: string;
   email: string;
   name?: string;
-  campaign?: string;
-  trafficSource?: string;
-  signedAt: string;
+  createdAt: string;
+  source?: string;
+  campaignId?: string;
+  notes?: string;
 };
 
 export default function AdminView() {
@@ -142,22 +143,24 @@ function AdminPanel({
   const [activeDesignSection, setActiveDesignSection] = useState<
     "header" | "background" | "typography" | "buttons"
   >("header");
-  const [subscribers, setSubscribers] = useState<SubscriberEntry[]>([]);
-  const [subscribersLoading, setSubscribersLoading] = useState(false);
-  const [spreadsheetId, setSpreadsheetId] = useState("");
-  const [sheetName, setSheetName] = useState("Subscribers");
+  const [audienceEntries, setAudienceEntries] = useState<AudienceEntry[]>([]);
+  const [audienceLoading, setAudienceLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
 
-  const fetchSubscribers = async () => {
-    setSubscribersLoading(true);
+  const fetchAudience = async () => {
+    setAudienceLoading(true);
     try {
-      const response = await fetch("/api/subscribers");
-      const data = (await response.json()) as SubscriberEntry[];
-      setSubscribers(Array.isArray(data) ? data : []);
+      const response = await fetch("/api/audience", {
+        headers: {
+          "x-admin-password": adminPassword,
+        },
+      });
+      const data = (await response.json()) as AudienceEntry[];
+      setAudienceEntries(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Failed to load subscribers", error);
+      console.error("Failed to load audience entries", error);
     } finally {
-      setSubscribersLoading(false);
+      setAudienceLoading(false);
     }
   };
 
@@ -166,16 +169,16 @@ function AdminPanel({
   }, [config, form]);
 
   useEffect(() => {
-    void fetchSubscribers();
-  }, []);
+    void fetchAudience();
+  }, [adminPassword]);
 
-  const formattedSubscribers = useMemo(
+  const formattedAudience = useMemo(
     () =>
-      subscribers.map((entry) => ({
+      audienceEntries.map((entry) => ({
         ...entry,
-        displayTime: new Date(entry.signedAt).toLocaleString(),
+        displayTime: new Date(entry.createdAt).toLocaleString(),
       })),
-    [subscribers],
+    [audienceEntries],
   );
 
   const { fields: downloadFields, append: appendDownload, remove: removeDownload } = useFieldArray({
@@ -205,30 +208,25 @@ function AdminPanel({
   const handleExportPreview = async () => {
     setExportLoading(true);
     try {
-      const response = await fetch("/api/subscribers/export-preview", {
-        method: "POST",
+      const response = await fetch("/api/audience/export", {
+        method: "GET",
+        headers: {
+          "x-admin-password": adminPassword,
+        },
       });
       if (!response.ok) {
         throw new Error(`Export failed: ${response.status}`);
       }
-      const rows = (await response.json()) as string[][];
-      const csv = rows
-        .map((row) =>
-          row
-            .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
-            .join(","),
-        )
-        .join("\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${sheetName || "subscribers"}-preview.csv`;
+      link.download = "audience-export.csv";
       link.click();
       URL.revokeObjectURL(url);
       toast({
         title: "Export ready",
-        description: "Downloaded export preview CSV.",
+        description: "Downloaded audience export CSV.",
       });
     } catch (error) {
       toast({
@@ -290,6 +288,19 @@ function AdminPanel({
                       name="campaign.subtitle"
                       render={({ field }) => (
                         <FormItem><FormLabel>Campaign Subtitle</FormLabel><FormControl><Input {...field} placeholder="คำอธิบายสั้น ๆ" /></FormControl><FormMessage /></FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="campaign.shareMessage"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Share Message</FormLabel>
+                          <FormControl>
+                            <Textarea rows={3} {...field} placeholder="Short message to prefill when sharing." />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                       )}
                     />
                   </CardContent>
@@ -411,7 +422,7 @@ function AdminPanel({
                          <FormField control={form.control} name={`downloads.${index}.description`} render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                          <FormField 
                             control={form.control} 
-                            name={`downloads.${index}.downloadUrl`} 
+                            name={`downloads.${index}.fileUrl`} 
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>File Download</FormLabel>
@@ -436,7 +447,7 @@ function AdminPanel({
                     </CardContent>
                   </Card>
                 ))}
-                <Button type="button" variant="outline" className="w-full" onClick={() => appendDownload({ id: Date.now().toString(), title: "New File", description: "", downloadUrl: "" })}>
+                <Button type="button" variant="outline" className="w-full" onClick={() => appendDownload({ id: Date.now().toString(), title: "New File", description: "", fileUrl: "" })}>
                     <Plus className="w-4 h-4 mr-2" /> Add Download
                 </Button>
               </TabsContent>
@@ -589,49 +600,49 @@ function AdminPanel({
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Subscribers</CardTitle>
+                    <CardTitle>Audience</CardTitle>
                     <CardDescription>Latest signups from the public form.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-muted-foreground">
-                        Showing {formattedSubscribers.length} entries
+                        Showing {formattedAudience.length} entries
                       </div>
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={fetchSubscribers}
-                        disabled={subscribersLoading}
+                        onClick={fetchAudience}
+                        disabled={audienceLoading}
                       >
-                        {subscribersLoading ? "Refreshing..." : "Refresh"}
+                        {audienceLoading ? "Refreshing..." : "Refresh"}
                       </Button>
                     </div>
                     <div className="overflow-x-auto rounded-lg border border-white/10">
                       <table className="min-w-full text-sm">
                         <thead className="bg-white/5 text-muted-foreground">
                           <tr>
-                            <th className="px-3 py-2 text-left font-medium">Signed At</th>
+                            <th className="px-3 py-2 text-left font-medium">Created At</th>
                             <th className="px-3 py-2 text-left font-medium">Email</th>
                             <th className="px-3 py-2 text-left font-medium">Name</th>
                             <th className="px-3 py-2 text-left font-medium">Campaign</th>
-                            <th className="px-3 py-2 text-left font-medium">Traffic Source</th>
+                            <th className="px-3 py-2 text-left font-medium">Source</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {formattedSubscribers.length === 0 && (
+                          {formattedAudience.length === 0 && (
                             <tr>
                               <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
-                                No subscribers yet.
+                                No audience entries yet.
                               </td>
                             </tr>
                           )}
-                          {formattedSubscribers.map((entry) => (
+                          {formattedAudience.map((entry) => (
                             <tr key={entry.id} className="border-t border-white/5">
                               <td className="px-3 py-2">{entry.displayTime}</td>
                               <td className="px-3 py-2">{entry.email}</td>
                               <td className="px-3 py-2">{entry.name || "-"}</td>
-                              <td className="px-3 py-2">{entry.campaign || "-"}</td>
-                              <td className="px-3 py-2">{entry.trafficSource || "-"}</td>
+                              <td className="px-3 py-2">{entry.campaignId || "-"}</td>
+                              <td className="px-3 py-2">{entry.source || "-"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -642,30 +653,10 @@ function AdminPanel({
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Google Sheets Export</CardTitle>
-                    <CardDescription>Configure export targets for a future Google Sheets sync.</CardDescription>
+                    <CardTitle>Export Audience CSV</CardTitle>
+                    <CardDescription>Download a CSV file containing the latest audience data.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <FormItem>
-                      <FormLabel>Spreadsheet ID</FormLabel>
-                      <FormControl>
-                        <Input
-                          value={spreadsheetId}
-                          onChange={(event) => setSpreadsheetId(event.target.value)}
-                          placeholder="1A2B3C..."
-                        />
-                      </FormControl>
-                    </FormItem>
-                    <FormItem>
-                      <FormLabel>Sheet Name</FormLabel>
-                      <FormControl>
-                        <Input
-                          value={sheetName}
-                          onChange={(event) => setSheetName(event.target.value)}
-                          placeholder="Subscribers"
-                        />
-                      </FormControl>
-                    </FormItem>
                     <Button
                       type="button"
                       className="w-full"

@@ -13,9 +13,9 @@ interface DownloadCardProps {
 
 export function DownloadCard({ item, index, buttonStyle }: DownloadCardProps) {
   const hasFile =
-    Boolean(item.downloadUrl) &&
-    item.downloadUrl !== "#" &&
-    item.downloadUrl !== "/";
+    Boolean(item.fileUrl) &&
+    item.fileUrl !== "#" &&
+    item.fileUrl !== "/";
 
   return (
     <motion.div
@@ -47,7 +47,7 @@ export function DownloadCard({ item, index, buttonStyle }: DownloadCardProps) {
               style={buttonStyle}
               asChild
             >
-              <a href={item.downloadUrl} target="_blank" rel="noopener noreferrer" download>
+              <a href={item.fileUrl} target="_blank" rel="noopener noreferrer" download>
                 <Download className="w-5 h-5" />
               </a>
             </Button>

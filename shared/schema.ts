@@ -20,6 +20,7 @@ export const promoConfigSchema = z.object({
     subtitle: z.string().optional(),
     avatarUrl: z.string().optional(),
     heroUrl: z.string().optional(),
+    shareMessage: z.string().optional(),
     steps: z.array(z.string()),
   }),
   audience: z.object({
@@ -63,7 +64,7 @@ export const promoConfigSchema = z.object({
       id: z.string(),
       title: z.string(),
       description: z.string().optional(),
-      downloadUrl: z.string(),
+      fileUrl: z.string(),
     }),
   ),
   activities: z.array(
@@ -81,9 +82,10 @@ export const audienceEntrySchema = z.object({
   id: z.string(),
   email: z.string().email(),
   name: z.string().optional(),
-  campaign: z.string().optional(),
-  trafficSource: z.string().optional(),
-  signedAt: z.string(),
+  createdAt: z.string(),
+  source: z.string().optional(),
+  campaignId: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

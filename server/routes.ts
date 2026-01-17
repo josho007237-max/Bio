@@ -6,14 +6,7 @@ import fs from "fs/promises";
 import { promoConfigSchema } from "@shared/schema";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import {
-  appendAudience,
-  appendSubscriber,
-  loadAudience,
-  loadConfig,
-  loadSubscribers,
-  saveConfig,
-} from "./storage";
+import { appendAudience, loadAudience, loadConfig, saveConfig } from "./storage";
 
 const ADMIN_PASSWORD = process.env.VITE_ADMIN_PASSWORD;
 const GOOGLE_SHEETS_WEBHOOK_URL = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
@@ -82,19 +75,6 @@ export async function registerRoutes(
   const audienceSchema = z.object({
     email: z.string().email(),
     name: z.string().optional(),
-    campaign: z.string().optional(),
-    source: z.string().optional(),
-    notes: z.string().optional(),
-  });
-
-  app.get("/api/audience", async (_req, res, next) => {
-    try {
-      const entries = await loadAudience();
-      res.set("x-google-sheets-enabled", String(Boolean(GOOGLE_SHEETS_WEBHOOK_URL)));
-      res.json(entries);
-    } catch (error) {
-      next(error);
-    }
   });
 
   app.post("/api/audience", async (req, res, next) => {
@@ -107,92 +87,59 @@ export async function registerRoutes(
         });
       }
 
+      const rawSource = req.query.source ?? req.header("x-audience-source");
+      const source = Array.isArray(rawSource) ? rawSource[0] : rawSource;
+      const config = await loadConfig();
+
       const entry = {
-        ...parsed.data,
-        timestamp: new Date().toISOString(),
+        id: randomUUID(),
+        email: parsed.data.email,
+        name: parsed.data.name,
+        createdAt: new Date().toISOString(),
+        source: source || undefined,
+        campaignId: config.campaign.title || undefined,
       };
 
       await appendAudience(entry);
 
-      if (GOOGLE_SHEETS_WEBHOOK_URL) {
-        try {
-          await fetch(GOOGLE_SHEETS_WEBHOOK_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...entry, timestamp: entry.timestamp }),
-          });
-        } catch (error) {
-          console.warn("Failed to post audience to Google Sheets webhook", error);
-        }
-      }
-
-      return res.json({ ok: true });
+      return res.json({ message: "Audience captured", id: entry.id });
     } catch (error) {
       return next(error);
     }
   });
 
-  const subscribeSchema = z.object({
-    email: z.string().email(),
-    name: z.string().optional(),
-  });
-
-  app.get("/api/subscribers", async (_req, res, next) => {
+  app.get("/api/audience", requireAdmin, async (_req, res, next) => {
     try {
-      const entries = await loadSubscribers();
+      const entries = await loadAudience();
       res.json(entries);
     } catch (error) {
       next(error);
     }
   });
 
-  app.post("/api/subscribe", async (req, res, next) => {
+  app.get("/api/audience/export", requireAdmin, async (_req, res, next) => {
     try {
-      const parsed = subscribeSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({
-          message: "Invalid subscriber payload",
-          errors: parsed.error.flatten(),
-        });
-      }
-
-      const config = await loadConfig();
-      const campaignTitle = config.campaign.title?.trim() || "Default Campaign";
-      const rawSource = req.query.utm_source ?? req.query.source;
-      const trafficSource = Array.isArray(rawSource) ? rawSource[0] : rawSource;
-
-      const entry = {
-        id: randomUUID(),
-        email: parsed.data.email,
-        name: parsed.data.name,
-        campaign: campaignTitle,
-        trafficSource: trafficSource || undefined,
-        signedAt: new Date().toISOString(),
-      };
-
-      await appendSubscriber(entry);
-
-      return res.json({ message: "Subscribed", id: entry.id });
-    } catch (error) {
-      return next(error);
-    }
-  });
-
-  app.post("/api/subscribers/export-preview", async (_req, res, next) => {
-    try {
-      const entries = await loadSubscribers();
-      const rows = [
-        ["Email", "Name", "Campaign", "Traffic Source", "Signed At", "Note/Tag"],
-        ...entries.map((entry) => [
-          entry.email,
-          entry.name ?? "",
-          entry.campaign ?? "",
-          entry.trafficSource ?? "",
-          entry.signedAt,
-          "",
-        ]),
-      ];
-      res.json(rows);
+      const entries = await loadAudience();
+      const header = ["ID", "Created At", "Email", "Name", "Source", "Campaign ID", "Notes"];
+      const rows = entries.map((entry) => [
+        entry.id,
+        entry.createdAt,
+        entry.email ?? "",
+        entry.name ?? "",
+        entry.source ?? "",
+        entry.campaignId ?? "",
+        entry.notes ?? "",
+      ]);
+      const csv = [header, ...rows]
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+      res
+        .status(200)
+        .set({
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": "attachment; filename=\"audience-export.csv\"",
+        })
+        .send(csv);
     } catch (error) {
       next(error);
     }

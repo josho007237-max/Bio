@@ -39,7 +39,10 @@ export default function PublicView() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/subscribe", {
+      const params = new URLSearchParams(window.location.search);
+      const source = params.get("utm_source") ?? params.get("source") ?? undefined;
+      const requestUrl = source ? `/api/audience?source=${encodeURIComponent(source)}` : "/api/audience";
+      const response = await fetch(requestUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

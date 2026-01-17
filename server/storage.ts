@@ -42,11 +42,11 @@ export const storage = new MemStorage();
 const configDir = path.resolve(process.cwd(), "data");
 const configPath = path.join(configDir, "promo-config.json");
 const audiencePath = path.join(configDir, "audience.json");
-const subscribersPath = path.join(configDir, "subscribers.json");
 
 const defaultConfig: PromoConfig = {
   campaign: {
     title: "",
+    shareMessage: "",
     steps: [],
   },
   audience: {
@@ -101,47 +101,9 @@ export async function saveConfig(config: PromoConfig): Promise<void> {
   await fs.writeFile(configPath, JSON.stringify(config, null, 2));
 }
 
-export type AudienceEvent = {
-  timestamp: string;
-  email: string;
-  name?: string;
-  campaign?: string;
-  source?: string;
-  notes?: string;
-};
-
-export async function loadAudience(): Promise<AudienceEvent[]> {
+export async function loadAudience(): Promise<AudienceEntry[]> {
   try {
     const raw = await fs.readFile(audiencePath, "utf-8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as AudienceEvent[]) : [];
-  } catch (error) {
-    const notFound =
-      error instanceof Error &&
-      "code" in error &&
-      (error as NodeJS.ErrnoException).code === "ENOENT";
-    if (!notFound) {
-      throw error;
-    }
-    return [];
-  }
-}
-
-export async function saveAudience(entries: AudienceEvent[]): Promise<void> {
-  await fs.mkdir(configDir, { recursive: true });
-  await fs.writeFile(audiencePath, JSON.stringify(entries, null, 2));
-}
-
-export async function appendAudience(entry: AudienceEvent): Promise<AudienceEvent[]> {
-  const entries = await loadAudience();
-  const next = [entry, ...entries];
-  await saveAudience(next);
-  return next;
-}
-
-export async function loadSubscribers(): Promise<AudienceEntry[]> {
-  try {
-    const raw = await fs.readFile(subscribersPath, "utf-8");
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as AudienceEntry[]) : [];
   } catch (error) {
@@ -152,18 +114,20 @@ export async function loadSubscribers(): Promise<AudienceEntry[]> {
     if (!notFound) {
       throw error;
     }
+    await fs.mkdir(configDir, { recursive: true });
+    await fs.writeFile(audiencePath, JSON.stringify([], null, 2));
     return [];
   }
 }
 
-export async function saveSubscribers(entries: AudienceEntry[]): Promise<void> {
+export async function saveAudience(entries: AudienceEntry[]): Promise<void> {
   await fs.mkdir(configDir, { recursive: true });
-  await fs.writeFile(subscribersPath, JSON.stringify(entries, null, 2));
+  await fs.writeFile(audiencePath, JSON.stringify(entries, null, 2));
 }
 
-export async function appendSubscriber(entry: AudienceEntry): Promise<AudienceEntry[]> {
-  const entries = await loadSubscribers();
+export async function appendAudience(entry: AudienceEntry): Promise<AudienceEntry[]> {
+  const entries = await loadAudience();
   const next = [entry, ...entries];
-  await saveSubscribers(next);
+  await saveAudience(next);
   return next;
 }
