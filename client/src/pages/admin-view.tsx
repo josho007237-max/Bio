@@ -32,6 +32,23 @@ import { Trash2, Plus, Save, ArrowLeft, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
 import { FileUploader } from "@/components/ui/file-upload";
+import {
+  DesignBackgroundSection,
+  DesignButtonSection,
+  DesignHeaderSection,
+  DesignPreview,
+  DesignTypographySection,
+} from "@/components/admin/design-sections";
+
+type AudienceEntry = {
+  id: string;
+  email: string;
+  name?: string;
+  createdAt: string;
+  source?: string;
+  campaignId?: string;
+  notes?: string;
+};
 
 // ใช้ AppConfig เป็น type ของ form โดยตรง
 type FormValues = AppConfig;
@@ -103,15 +120,15 @@ export default function AdminView() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === envPassword) {
-      setIsAuthenticated(true);
-    } else {
+    if (!password) {
       toast({
         title: "รหัสผ่านไม่ถูกต้อง",
         description: "Invalid Password",
         variant: "destructive",
       });
+      return;
     }
+    setIsAuthenticated(true);
   };
 
   if (!isAuthenticated) {
@@ -204,7 +221,7 @@ function AdminPanel({
     remove: removePost,
   } = useFieldArray({
     control: form.control,
-    name: "posts",
+    name: "activities",
   });
 
   const {
@@ -254,12 +271,14 @@ function AdminPanel({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <Tabs defaultValue="campaign" className="w-full">
-              <TabsList className="grid w-full grid-cols-5 mb-8">
+              <TabsList className="grid w-full grid-cols-7 mb-8">
                 <TabsTrigger value="campaign">Campaign</TabsTrigger>
                 <TabsTrigger value="profile">Profile</TabsTrigger>
                 <TabsTrigger value="discounts">Discounts</TabsTrigger>
                 <TabsTrigger value="downloads">Files</TabsTrigger>
                 <TabsTrigger value="posts">Posts</TabsTrigger>
+                <TabsTrigger value="design">Design</TabsTrigger>
+                <TabsTrigger value="audience">Audience</TabsTrigger>
               </TabsList>
 
               {/* Campaign */}
@@ -274,7 +293,7 @@ function AdminPanel({
                   <CardContent className="space-y-4">
                     <FormField
                       control={form.control}
-                      name="campaign.name"
+                      name="campaign.title"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Campaign Name (Thai/English)</FormLabel>
@@ -287,7 +306,7 @@ function AdminPanel({
                     />
                     <FormField
                       control={form.control}
-                      name="campaign.shareInstruction"
+                      name="campaign.subtitle"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Share Instruction</FormLabel>
@@ -417,7 +436,7 @@ function AdminPanel({
                     />
                     <FormField
                       control={form.control}
-                      name="profile.heroUrl"
+                      name="campaign.heroUrl"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Hero Background</FormLabel>
@@ -636,7 +655,7 @@ function AdminPanel({
 
               {/* Posts */}
               <TabsContent value="posts" className="space-y-4">
-                {postFields.map((field, index) => (
+                {activityFields.map((field, index) => (
                   <Card key={field.id} className="relative">
                     <Button
                       type="button"

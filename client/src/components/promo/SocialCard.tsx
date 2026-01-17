@@ -1,36 +1,38 @@
+import type { CSSProperties } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Twitter, Facebook, Youtube, Instagram, Link2, Share2, Video } from "lucide-react";
+import { ExternalLink, Twitter, Facebook, Youtube, Link2, Share2, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { PostItem } from "@/lib/store";
+import { ActivityItem } from "@/lib/store";
 
 interface SocialCardProps {
-  item: PostItem;
+  item: ActivityItem;
   index: number;
+  buttonStyle?: CSSProperties;
 }
 
 const getIcon = (platform: string) => {
   switch (platform) {
-    case 'twitter': return <Twitter className="w-5 h-5 text-sky-500" />;
-    case 'facebook': return <Facebook className="w-5 h-5 text-blue-600" />;
-    case 'youtube': return <Youtube className="w-5 h-5 text-red-600" />;
-    case 'tiktok': return <Video className="w-5 h-5 text-pink-500" />;
-    case 'website': return <Link2 className="w-5 h-5 text-foreground" />;
+    case "x": return <Twitter className="w-5 h-5 text-sky-500" />;
+    case "facebook": return <Facebook className="w-5 h-5 text-blue-600" />;
+    case "youtube": return <Youtube className="w-5 h-5 text-red-600" />;
+    case "tiktok": return <Video className="w-5 h-5 text-pink-500" />;
+    case "web": return <Link2 className="w-5 h-5 text-foreground" />;
     default: return <Share2 className="w-5 h-5 text-foreground" />;
   }
 };
 
 const getLabel = (platform: string) => {
     switch (platform) {
-      case 'twitter': return 'View on X';
-      case 'facebook': return 'View on Facebook';
-      case 'youtube': return 'Watch on YouTube';
-      case 'tiktok': return 'View on TikTok';
-      default: return 'Open Link';
+      case "x": return "View on X";
+      case "facebook": return "View on Facebook";
+      case "youtube": return "Watch on YouTube";
+      case "tiktok": return "View on TikTok";
+      default: return "Open Link";
     }
   };
 
-export function SocialCard({ item, index }: SocialCardProps) {
+export function SocialCard({ item, index, buttonStyle }: SocialCardProps) {
   // Simple check for YouTube video ID to embed
   const getYoutubeEmbedUrl = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -38,7 +40,7 @@ export function SocialCard({ item, index }: SocialCardProps) {
     return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
   };
 
-  const youtubeEmbed = item.platform === 'youtube' ? getYoutubeEmbedUrl(item.url) : null;
+  const youtubeEmbed = item.platform === "youtube" ? getYoutubeEmbedUrl(item.url) : null;
 
   if (youtubeEmbed) {
     return (
@@ -64,7 +66,7 @@ export function SocialCard({ item, index }: SocialCardProps) {
                          <div className="font-medium text-foreground truncate">{item.label || "Watch Video"}</div>
                          {item.instruction && <div className="text-xs text-muted-foreground">{item.instruction}</div>}
                      </div>
-                     <Button size="sm" variant="secondary" asChild>
+                     <Button size="sm" variant="outline" style={buttonStyle} asChild>
                          <a href={item.url} target="_blank" rel="noopener noreferrer">Open App</a>
                      </Button>
                 </CardContent>
