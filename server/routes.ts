@@ -9,7 +9,6 @@ import { randomUUID } from "crypto";
 import { appendAudience, loadAudience, loadConfig, saveConfig } from "./storage";
 
 const ADMIN_PASSWORD = process.env.VITE_ADMIN_PASSWORD;
-const GOOGLE_SHEETS_WEBHOOK_URL = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
 
 export async function registerRoutes(
   httpServer: Server,

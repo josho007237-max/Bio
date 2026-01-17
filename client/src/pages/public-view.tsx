@@ -27,6 +27,55 @@ export default function PublicView() {
     fontFamily: resolveFontFamily(design.typography.titleFont),
   };
 
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: "คัดลอกลิงก์แล้ว",
+        description: "ลิงก์ถูกคัดลอกไปยังคลิปบอร์ดของคุณแล้ว",
+      });
+    } catch (error) {
+      toast({
+        title: "คัดลอกลิงก์ไม่สำเร็จ",
+        description: error instanceof Error ? error.message : "โปรดลองอีกครั้ง",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleShare = async () => {
+    const shareText =
+      config.campaign.shareMessage?.trim() ||
+      "มารับของฟรีและส่วนลดพิเศษจากแคมเปญนี้ด้วยกัน 🎁";
+    const shareData = {
+      title: config.campaign.title || "Share",
+      text: shareText,
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        toast({
+          title: "แชร์สำเร็จ",
+          description: "ขอบคุณที่ช่วยแชร์แคมเปญนี้",
+        });
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        toast({
+          title: "แชร์ไม่สำเร็จ",
+          description: error instanceof Error ? error.message : "โปรดลองอีกครั้ง",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
+
+    await handleCopyLink();
+  };
+
   const submitAudience = async () => {
     if (!subscriberEmail) {
       toast({
@@ -135,6 +184,30 @@ export default function PublicView() {
             </div>
           </section>
         )}
+
+        <section className="px-4 mt-4">
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
+            <h2 className="text-lg font-semibold" style={titleStyle}>
+              แชร์หน้านี้
+            </h2>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Button
+                className="w-full font-semibold"
+                style={buttonStyle}
+                onClick={handleCopyLink}
+              >
+                คัดลอกลิงก์
+              </Button>
+              <Button
+                className="w-full font-semibold"
+                style={buttonStyle}
+                onClick={handleShare}
+              >
+                แชร์หน้านี้
+              </Button>
+            </div>
+          </div>
+        </section>
 
         {/* Instructions */}
         <InstructionBlock instructions={config.campaign.steps} />
