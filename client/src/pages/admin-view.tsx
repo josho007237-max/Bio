@@ -146,6 +146,7 @@ function AdminPanel({
   const [subscribersLoading, setSubscribersLoading] = useState(false);
   const [spreadsheetId, setSpreadsheetId] = useState("");
   const [sheetName, setSheetName] = useState("Subscribers");
+  const [exportLoading, setExportLoading] = useState(false);
 
   const fetchSubscribers = async () => {
     setSubscribersLoading(true);
@@ -199,6 +200,45 @@ function AdminPanel({
 
   const onSubmit = (data: PromoConfig) => {
     onSave(data);
+  };
+
+  const handleExportPreview = async () => {
+    setExportLoading(true);
+    try {
+      const response = await fetch("/api/subscribers/export-preview", {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.status}`);
+      }
+      const rows = (await response.json()) as string[][];
+      const csv = rows
+        .map((row) =>
+          row
+            .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+            .join(","),
+        )
+        .join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${sheetName || "subscribers"}-preview.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Export ready",
+        description: "Downloaded export preview CSV.",
+      });
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   return (
@@ -621,6 +661,14 @@ function AdminPanel({
                         />
                       </FormControl>
                     </FormItem>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={handleExportPreview}
+                      disabled={exportLoading}
+                    >
+                      {exportLoading ? "Preparing..." : "Export Preview CSV"}
+                    </Button>
                   </CardContent>
                 </Card>
               </TabsContent>
