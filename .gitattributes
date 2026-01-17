@@ -1,0 +1,11 @@
+# ให้ Git จัดการ line endings ให้อัตโนมัติ
+* text=auto
+
+# ไฟล์โค้ดหลักบังคับใช้ LF ใน repo
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.jsx  text eol=lf
+*.json text eol=lf
+*.css  text eol=lf
+*.md   text eol=lf
