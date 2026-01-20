@@ -1,27 +1,32 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
-import PublicView from "@/pages/public-view";
-import AdminView from "@/pages/admin-view";
+// client/src/App.tsx
 
-function Router() {
-  return (
-    <Switch>
-      <Route path="/" component={PublicView} />
-      <Route path="/admin" component={AdminView} />
-      <Route component={NotFound} />
-    </Switch>
-  );
-}
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Route, Switch } from "wouter";
+
+import AdminView from "@/pages/admin-view";
+import PublicView from "@/pages/public-view";
+
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/toaster";
+
+const queryClient = new QueryClient();
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Router />
+        <Switch>
+          {/* ✅ /admin ต้องมาก่อน */}
+          <Route path="/admin">
+            <AdminView />
+          </Route>
+
+          {/* ✅ หน้า public หลัก */}
+          <Route path="/">
+            <PublicView />
+          </Route>
+        </Switch>
+
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
