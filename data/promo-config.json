@@ -1,7 +1,10 @@
 {
   "campaign": {
     "title": "",
-    "steps": []
+    "heroUrl": "/uploads/76f429e47e13562f1514446b3c3ef564",
+    "steps": [
+      "1"
+    ]
   },
   "discounts": [],
   "downloads": [],

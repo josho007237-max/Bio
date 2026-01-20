@@ -12,9 +12,33 @@ import { Link } from "wouter";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
+const FALLBACK_DESIGN: PromoConfig["design"] = {
+  background: {
+    style: "solid",
+    color1: "#020617",
+    color2: "#020617",
+    imageUrl: "",
+  },
+  typography: {
+    titleColor: "#ffffff",
+    bodyColor: "#e5e7eb",
+    titleFont: "Sans",
+  },
+  buttons: {
+    style: "solid",
+    textColor: "#0f172a",
+    backgroundColor: "#f97316",
+    borderRadius: 999,
+  },
+  headerLayout: "stacked",
+} as any;
+
 export default function PublicView() {
   const { config } = useAppConfig();
-  const { design } = config;
+
+  // กันกรณี config.design ว่าง หรือไม่มี field บางตัว
+  const design: PromoConfig["design"] = (config.design || FALLBACK_DESIGN) as PromoConfig["design"];
+
   const { toast } = useToast();
   const [subscriberEmail, setSubscriberEmail] = useState("");
   const [subscriberName, setSubscriberName] = useState("");
@@ -23,8 +47,8 @@ export default function PublicView() {
   const backgroundStyle = getBackgroundStyle(design);
   const buttonStyle = getButtonStyle(design);
   const titleStyle = {
-    color: design.typography.titleColor,
-    fontFamily: resolveFontFamily(design.typography.titleFont),
+    color: design.typography?.titleColor ?? "#ffffff",
+    fontFamily: resolveFontFamily(design.typography?.titleFont ?? "Sans"),
   };
 
   const handleCopyLink = async () => {
@@ -90,7 +114,10 @@ export default function PublicView() {
     try {
       const params = new URLSearchParams(window.location.search);
       const source = params.get("utm_source") ?? params.get("source") ?? undefined;
-      const requestUrl = source ? `/api/audience?source=${encodeURIComponent(source)}` : "/api/audience";
+      const requestUrl = source
+        ? `/api/audience?source=${encodeURIComponent(source)}`
+        : "/api/audience";
+
       const response = await fetch(requestUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -124,40 +151,45 @@ export default function PublicView() {
       className="min-h-screen text-foreground pb-20 relative selection:bg-primary/30"
       style={{
         ...backgroundStyle,
-        color: design.typography.bodyColor,
+        color: design.typography?.bodyColor ?? "#e5e7eb",
       }}
     >
-      
       {/* Admin Link (Hidden/Subtle) */}
       <div className="absolute top-4 right-4 z-50">
         <Link href="/admin">
-          <Button variant="ghost" size="icon" className="rounded-full bg-black/20 backdrop-blur text-white/50 hover:text-white hover:bg-black/40">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-full bg-black/20 backdrop-blur text-white/50 hover:text-white hover:bg-black/40"
+          >
             <Edit className="w-4 h-4" />
           </Button>
         </Link>
       </div>
 
       <div className="max-w-md mx-auto relative min-h-screen flex flex-col">
-        
         {/* Profile Section */}
-        <ProfileHeader 
+        <ProfileHeader
           title={config.campaign.title}
           subtitle={config.campaign.subtitle ?? ""}
           avatarUrl={config.campaign.avatarUrl ?? ""}
           heroUrl={config.campaign.heroUrl}
-          layout={design.headerLayout}
-          titleColor={design.typography.titleColor}
-          bodyColor={design.typography.bodyColor}
-          titleFont={resolveFontFamily(design.typography.titleFont)}
+          layout={design.headerLayout as any}
+          titleColor={design.typography?.titleColor ?? "#ffffff"}
+          bodyColor={design.typography?.bodyColor ?? "#e5e7eb"}
+          titleFont={resolveFontFamily(design.typography?.titleFont ?? "Sans")}
         />
 
-        {config.audience.enabled && (
+        {config.audience?.enabled && (
           <section className="px-4 mt-4 space-y-3">
             <h2 className="text-lg font-semibold" style={titleStyle}>
               {config.audience.title}
             </h2>
             {config.audience.description && (
-              <p className="text-sm" style={{ color: design.typography.bodyColor }}>
+              <p
+                className="text-sm"
+                style={{ color: design.typography?.bodyColor ?? "#e5e7eb" }}
+              >
                 {config.audience.description}
               </p>
             )}
@@ -214,11 +246,12 @@ export default function PublicView() {
 
         {/* Main Content Stack */}
         <main className="px-4 space-y-8 flex-1">
-          
           {/* Discounts (Hero Card) */}
           {config.discounts.length > 0 && (
             <section className="space-y-4">
-              <h2 className="text-lg font-semibold pl-1" style={titleStyle}>Exclusive Offers</h2>
+              <h2 className="text-lg font-semibold pl-1" style={titleStyle}>
+                Exclusive Offers
+              </h2>
               <div className="space-y-4">
                 {config.discounts.map((item) => (
                   <DiscountCard key={item.id} item={item} buttonStyle={buttonStyle} />
@@ -230,10 +263,17 @@ export default function PublicView() {
           {/* Downloads */}
           {config.downloads.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold pl-1" style={titleStyle}>Digital Downloads</h2>
+              <h2 className="text-lg font-semibold pl-1" style={titleStyle}>
+                Digital Downloads
+              </h2>
               <div className="space-y-3">
                 {config.downloads.map((item, index) => (
-                  <DownloadCard key={item.id} item={item} index={index} buttonStyle={buttonStyle} />
+                  <DownloadCard
+                    key={item.id}
+                    item={item}
+                    index={index}
+                    buttonStyle={buttonStyle}
+                  />
                 ))}
               </div>
             </section>
@@ -242,17 +282,23 @@ export default function PublicView() {
           {/* Activity Posts */}
           {config.activities.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold pl-1" style={titleStyle}>Activities & Sharing</h2>
+              <h2 className="text-lg font-semibold pl-1" style={titleStyle}>
+                Activities &amp; Sharing
+              </h2>
               <div className="space-y-3">
                 {config.activities.map((item, index) => (
-                  <SocialCard key={item.id} item={item} index={index} buttonStyle={buttonStyle} />
+                  <SocialCard
+                    key={item.id}
+                    item={item}
+                    index={index}
+                    buttonStyle={buttonStyle}
+                  />
                 ))}
               </div>
             </section>
           )}
-
         </main>
-        
+
         {/* Footer */}
         <footer className="mt-12 py-6 text-center text-xs text-muted-foreground">
           <p>© 2025 {config.campaign.title}. All rights reserved.</p>
@@ -262,35 +308,53 @@ export default function PublicView() {
   );
 }
 
-function getBackgroundStyle(design: PromoConfig["design"]) {
-  if (design.background.style === "image" && design.background.imageUrl) {
+function getBackgroundStyle(design?: PromoConfig["design"]): React.CSSProperties {
+  if (!design || !design.background) {
+    return {};
+  }
+
+  const bg = design.background;
+
+  if (bg.style === "image" && bg.imageUrl) {
     return {
-      backgroundImage: `url(${design.background.imageUrl})`,
+      backgroundImage: `url(${bg.imageUrl})`,
       backgroundSize: "cover",
       backgroundPosition: "center",
     };
   }
-  if (design.background.style === "gradient") {
+
+  if (bg.style === "gradient") {
     return {
-      backgroundImage: `linear-gradient(135deg, ${design.background.color1}, ${design.background.color2 ?? design.background.color1})`,
+      backgroundImage: `linear-gradient(135deg, ${bg.color1}, ${
+        bg.color2 ?? bg.color1
+      })`,
     };
   }
-  return { backgroundColor: design.background.color1 };
+
+  // solid เป็น default
+  return { backgroundColor: bg.color1 };
 }
 
-function getButtonStyle(design: PromoConfig["design"]) {
-  if (design.buttons.style === "outline") {
+function getButtonStyle(design?: PromoConfig["design"]): React.CSSProperties {
+  if (!design || !design.buttons) {
+    return {};
+  }
+
+  const buttons = design.buttons;
+
+  if (buttons.style === "outline") {
     return {
-      color: design.buttons.textColor,
-      border: `1px solid ${design.buttons.textColor}`,
-      borderRadius: `${design.buttons.borderRadius}px`,
+      color: buttons.textColor,
+      border: `1px solid ${buttons.textColor}`,
+      borderRadius: `${buttons.borderRadius}px`,
       backgroundColor: "transparent",
     };
   }
+
   return {
-    color: design.buttons.textColor,
-    backgroundColor: design.buttons.backgroundColor,
-    borderRadius: `${design.buttons.borderRadius}px`,
+    color: buttons.textColor,
+    backgroundColor: buttons.backgroundColor,
+    borderRadius: `${buttons.borderRadius}px`,
   };
 }
 
